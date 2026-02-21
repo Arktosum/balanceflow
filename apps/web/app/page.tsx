@@ -7,12 +7,51 @@ import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TrendingUp, TrendingDown, ArrowLeftRight } from "lucide-react";
+import { showToast } from "@/components/ui/Toast";
+import { formatCurrency } from "@/lib/utils";
 
-function formatCurrency(amount: number) {
-  return `₹${Math.abs(amount).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+// add this hook above the component
+function useGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+const QUOTES = [
+  {
+    text: "A budget is telling your money where to go instead of wondering where it went.",
+    author: "Dave Ramsey",
+  },
+  {
+    text: "Financial freedom is available to those who learn about it and work for it.",
+    author: "Robert Kiyosaki",
+  },
+  {
+    text: "Do not save what is left after spending, but spend what is left after saving.",
+    author: "Warren Buffett",
+  },
+  {
+    text: "The secret to getting ahead is getting started.",
+    author: "Mark Twain",
+  },
+  {
+    text: "It's not your salary that makes you rich, it's your spending habits.",
+    author: "Charles Jaffe",
+  },
+  {
+    text: "Beware of little expenses. A small leak will sink a great ship.",
+    author: "Benjamin Franklin",
+  },
+  {
+    text: "An investment in knowledge pays the best interest.",
+    author: "Benjamin Franklin",
+  },
+];
+
+function useDailyQuote() {
+  const dayIndex = Math.floor(Date.now() / 86400000) % QUOTES.length;
+  return QUOTES[dayIndex];
 }
 
 type Period = "day" | "week" | "month" | "year";
@@ -25,6 +64,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
+    window.addEventListener("transaction-added", fetchData);
+    return () => window.removeEventListener("transaction-added", fetchData);
   }, [period]);
 
   async function fetchData() {
@@ -37,7 +78,7 @@ export default function DashboardPage() {
       setAccounts(accountsRes.data);
       setSummary(summaryRes.data);
     } catch (err) {
-      console.error(err);
+      showToast("error", "Could not connect to server. Is the API running?");
     } finally {
       setLoading(false);
     }
@@ -48,10 +89,12 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-1">Your financial overview</p>
+          <p className="text-gray-500 text-sm mb-1">
+            {useGreeting()} Arktos!!!👋
+          </p>
+          <h1 className="text-2xl font-bold text-white">Welcome back!</h1>
         </div>
 
         {/* Period selector */}
@@ -73,6 +116,17 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Daily Quote */}
+      {(() => {
+        const quote = useDailyQuote();
+        return (
+          <Card className="border-l-4" style={{ borderLeftColor: "#6C63FF" }}>
+            <p className="text-gray-300 text-sm italic">"{quote.text}"</p>
+            <p className="text-gray-500 text-xs mt-2">— {quote.author}</p>
+          </Card>
+        );
+      })()}
 
       {/* Hero Balance */}
       <Card className="text-center py-10">
@@ -145,7 +199,7 @@ export default function DashboardPage() {
             <p
               className={`text-2xl font-bold ${(summary?.net_change ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}
             >
-              {`${(summary?.net_change ?? 0) >= 0 ? "+" : "-"}${formatCurrency(summary?.net_change ?? 0)}`}
+              {`${(summary?.net_change ?? 0) >= 0 ? "+" : ""}${formatCurrency(summary?.net_change ?? 0)}`}
             </p>
           )}
           <p className="text-gray-600 text-xs mt-1 capitalize">{period}</p>

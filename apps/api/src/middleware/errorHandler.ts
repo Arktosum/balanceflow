@@ -17,7 +17,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  if (err instanceof ZodError) {
+  if (err instanceof ZodError && Array.isArray(err.errors)) {
     return res.status(400).json({
       error: 'Validation failed',
       fields: err.errors.map((e) => ({
@@ -32,5 +32,5 @@ export function errorHandler(
   }
 
   console.error('Unhandled error:', err)
-  return res.status(500).json({ error: 'Internal server error' })
+  return res.status(500).json({ error: err.message || 'Internal server error' })
 }

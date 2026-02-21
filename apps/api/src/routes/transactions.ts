@@ -39,7 +39,7 @@ const CreateTransactionSchema = z.discriminatedUnion('type', [
 ])
 
 const UpdateTransactionSchema = z.object({
-  amount: z.number().positive().optional(),
+  amount: z.coerce.number().positive().optional(),
   category_id: z.string().uuid().optional(),
   merchant_id: z.string().uuid().optional(),
   note: z.string().max(500).optional(),
@@ -243,20 +243,50 @@ router.patch('/:id', asyncHandler(async (req, res) => {
   if (existing.rows.length === 0) throw new AppError(404, 'Transaction not found')
 
   const tx = existing.rows[0]
-  const result = await db.query(
-    `UPDATE transactions
-     SET category_id = $1, merchant_id = $2, note = $3, date = $4, updated_at = NOW()
-     WHERE id = $5
-     RETURNING *`,
-    [
-      data.category_id ?? tx.category_id,
-      data.merchant_id ?? tx.merchant_id,
-      data.note ?? tx.note,
-      data.date ?? tx.date,
-      req.params.id,
-    ]
-  )
-  res.json(result.rows[0])
+
+  // if amount changed and transaction is completed, adjust the balance
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+
+    if (data.amount && data.amount !== parseFloat(tx.amount) && tx.status === 'completed') {
+      const diff = data.amount - parseFloat(tx.amount)
+      if (tx.type === 'expense') {
+        await client.query(
+          'UPDATE accounts SET balance = balance - $1, updated_at = NOW() WHERE id = $2',
+          [diff, tx.account_id]
+        )
+      } else if (tx.type === 'income') {
+        await client.query(
+          'UPDATE accounts SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
+          [diff, tx.account_id]
+        )
+      }
+    }
+
+    const result = await client.query(
+      `UPDATE transactions
+       SET amount = $1, category_id = $2, merchant_id = $3, note = $4, date = $5, updated_at = NOW()
+       WHERE id = $6
+       RETURNING *`,
+      [
+        data.amount ?? tx.amount,
+        data.category_id ?? tx.category_id,
+        data.merchant_id ?? tx.merchant_id,
+        data.note ?? tx.note,
+        data.date ?? tx.date,
+        req.params.id,
+      ]
+    )
+
+    await client.query('COMMIT')
+    res.json(result.rows[0])
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
+  }
 }))
 
 // DELETE /api/transactions/:id — soft delete + reverse balance
