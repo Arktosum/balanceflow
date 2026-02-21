@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { ZodError } from 'zod'
+import { ZodError, ZodIssue } from 'zod'
 
 export class AppError extends Error {
   constructor(
@@ -17,10 +17,10 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  if (err instanceof ZodError && Array.isArray(err.errors)) {
+  if (err instanceof ZodError) {
     return res.status(400).json({
       error: 'Validation failed',
-      fields: err.errors.map((e) => ({
+      fields: err.issues.map((e: ZodIssue) => ({
         field: e.path.join('.'),
         message: e.message,
       })),
