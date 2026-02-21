@@ -3,6 +3,13 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import './db'
 import { errorHandler } from './middleware/errorHandler'
+import { accountsRouter } from './routes/accounts'
+import { categoriesRouter } from './routes/categories'
+import { merchantsRouter } from './routes/merchants'
+import { transactionsRouter } from './routes/transactions'
+import { debtsRouter } from './routes/debts'
+import { analyticsRouter } from './routes/analytics'
+
 
 dotenv.config()
 
@@ -22,6 +29,13 @@ app.get('/health', (_req, res) => {
     timestamp: new Date().toISOString(),
   })
 })
+
+app.use('/api/accounts', accountsRouter)
+app.use('/api/categories', categoriesRouter)
+app.use('/api/merchants', merchantsRouter)
+app.use('/api/transactions', transactionsRouter)
+app.use('/api/debts', debtsRouter)
+app.use('/api/analytics', analyticsRouter)
 
 app.use(errorHandler)
 
