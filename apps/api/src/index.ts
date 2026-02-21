@@ -1,7 +1,8 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import './db' // runs the connection check on startup
+import './db'
+import { errorHandler } from './middleware/errorHandler'
 
 dotenv.config()
 
@@ -21,6 +22,8 @@ app.get('/health', (_req, res) => {
     timestamp: new Date().toISOString(),
   })
 })
+
+app.use(errorHandler)
 
 app.listen(PORT, () => {
   console.log(`✅ BalanceFlow API running on http://localhost:${PORT}`)
