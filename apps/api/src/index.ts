@@ -9,9 +9,9 @@ import { merchantsRouter } from './routes/merchants'
 import { transactionsRouter } from './routes/transactions'
 import { debtsRouter } from './routes/debts'
 import { analyticsRouter } from './routes/analytics'
-import { checkDb } from './db'
-import { authMiddleware } from './middleware/auth'
 
+import { authMiddleware } from './middleware/auth'
+import { db } from './db'
 
 dotenv.config()
 
@@ -28,7 +28,7 @@ app.use(cors({
 
 app.get('/health', async (_req, res) => {
   try {
-    await checkDb()
+    await db.query('SELECT 1')
     res.json({
       status: 'ok',
       app: 'BalanceFlow API',
