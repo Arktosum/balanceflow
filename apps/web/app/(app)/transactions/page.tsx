@@ -7,9 +7,15 @@ import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { showToast } from "@/components/ui/Toast";
-import { Trash2, Pencil, X, Check, SlidersHorizontal } from "lucide-react";
-
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
+import {
+  Trash2,
+  Pencil,
+  X,
+  Check,
+  SlidersHorizontal,
+  Search,
+} from "lucide-react";
 
 function groupByDate(transactions: Transaction[]) {
   const groups: Record<string, Transaction[]> = {};
@@ -21,7 +27,6 @@ function groupByDate(transactions: Transaction[]) {
   return groups;
 }
 
-// Transaction detail/edit modal
 function TransactionModal({
   transaction,
   categories,
@@ -38,16 +43,16 @@ function TransactionModal({
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState(transaction.note ?? "");
   const [categoryId, setCategoryId] = useState(transaction.category_id ?? "");
-  const [deleting, setDeleting] = useState(false);
-  const [saving, setSaving] = useState(false);
-
   const [amount, setAmount] = useState(transaction.amount);
   const [dateValue, setDateValue] = useState(() => {
     const d = new Date(transaction.date);
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().slice(0, 16);
   });
+  const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -123,31 +128,20 @@ function TransactionModal({
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-white">Transaction Details</h2>
-          <div className="flex items-center gap-2">
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="p-2 rounded-lg text-gray-400 hover:text-white transition-colors"
-                style={{ background: "rgba(255,255,255,0.05)" }}
-              >
-                <Pencil size={16} />
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg text-gray-400 hover:text-white transition-colors"
-              style={{ background: "rgba(255,255,255,0.05)" }}
-            >
-              <X size={16} />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-gray-400 hover:text-white transition-colors"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {/* Amount */}
         <div className="text-center py-4">
           {editing ? (
             <div
-              className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 mx-auto w-48"
+              className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 mx-auto w-56"
               style={{ background: "rgba(255,255,255,0.06)" }}
             >
               <span className="text-gray-400 text-lg">₹</span>
@@ -205,7 +199,6 @@ function TransactionModal({
             </div>
           )}
 
-
           <div
             className="flex justify-between items-center py-2 border-b"
             style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -226,7 +219,6 @@ function TransactionModal({
             </span>
           </div>
 
-          {/* Editable fields */}
           <div
             className="flex justify-between items-center py-2 border-b"
             style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -307,7 +299,7 @@ function TransactionModal({
           <div className="flex gap-3">
             <button
               onClick={() => setEditing(false)}
-              className="flex-1 py-3 rounded-xl text-gray-400 text-sm font-medium transition-colors"
+              className="flex-1 py-3 rounded-xl text-gray-400 text-sm font-medium"
               style={{ background: "rgba(255,255,255,0.05)" }}
             >
               Cancel
@@ -375,8 +367,8 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Transaction | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // filters
   const [filterType, setFilterType] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterAccount, setFilterAccount] = useState("");
@@ -421,7 +413,17 @@ export default function TransactionsPage() {
     setTransactions((prev) => prev.map((t) => (t.id === tx.id ? tx : t)));
   }
 
-  const grouped = groupByDate(transactions);
+  const filtered = transactions.filter((tx) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      tx.merchant_name?.toLowerCase().includes(q) ||
+      tx.note?.toLowerCase().includes(q) ||
+      tx.amount.toString().includes(q)
+    );
+  });
+
+  const grouped = groupByDate(filtered);
   const hasFilters =
     filterType || filterStatus || filterAccount || filterMerchant;
 
@@ -432,25 +434,52 @@ export default function TransactionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">Transactions</h1>
           <p className="text-gray-500 text-sm mt-1">
-            {loading ? "..." : `${transactions.length} transactions`}
+            {loading ? "..." : `${filtered.length} transactions`}
           </p>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-          style={{
-            background: hasFilters
-              ? "rgba(108,99,255,0.2)"
-              : "rgba(255,255,255,0.05)",
-            color: hasFilters ? "#6C63FF" : "#9ca3af",
-            border: hasFilters
-              ? "1px solid rgba(108,99,255,0.3)"
-              : "1px solid transparent",
-          }}
-        >
-          <SlidersHorizontal size={16} />
-          Filters {hasFilters && "•"}
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div
+            className="flex items-center gap-2 px-4 py-2 rounded-xl"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
+            <Search size={16} className="text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search transactions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="bg-transparent text-white text-sm outline-none placeholder-gray-600 w-48"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="text-gray-600 hover:text-white"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Filters */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            style={{
+              background: hasFilters
+                ? "rgba(108,99,255,0.2)"
+                : "rgba(255,255,255,0.05)",
+              color: hasFilters ? "#6C63FF" : "#9ca3af",
+              border: hasFilters
+                ? "1px solid rgba(108,99,255,0.3)"
+                : "1px solid transparent",
+            }}
+          >
+            <SlidersHorizontal size={16} />
+            Filters {hasFilters && "•"}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -549,17 +578,22 @@ export default function TransactionsPage() {
             <Skeleton key={i} className="h-16" />
           ))}
         </div>
-      ) : transactions.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon="💸"
-          message="No transactions yet"
-          subMessage="Tap the + button to add your first transaction"
+          message={
+            search ? `No results for "${search}"` : "No transactions yet"
+          }
+          subMessage={
+            search
+              ? "Try a different search term"
+              : "Tap the + button to add your first transaction"
+          }
         />
       ) : (
         <div className="flex flex-col gap-6">
           {Object.entries(grouped).map(([date, txs]) => (
             <div key={date}>
-              {/* Date header */}
               <div className="flex items-center gap-3 mb-3">
                 <p className="text-sm font-semibold text-gray-400">{date}</p>
                 <div
@@ -581,7 +615,6 @@ export default function TransactionsPage() {
                 </p>
               </div>
 
-              {/* Transactions */}
               <div className="flex flex-col gap-2">
                 {txs.map((tx) => {
                   const amountColor =
@@ -603,7 +636,6 @@ export default function TransactionsPage() {
                       onClick={() => setSelected(tx)}
                       className="flex items-center gap-4"
                     >
-                      {/* Category icon */}
                       <div
                         className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
                         style={{
@@ -619,7 +651,7 @@ export default function TransactionsPage() {
                               ? "💰"
                               : "💸")}
                       </div>
-                      {/* Info */}
+
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-sm font-medium truncate">
                           {tx.merchant_name ?? tx.note ?? tx.type}
@@ -660,7 +692,6 @@ export default function TransactionsPage() {
                         </div>
                       </div>
 
-                      {/* Amount + time */}
                       <div className="text-right flex-shrink-0">
                         <p
                           className="text-sm font-bold"
@@ -682,7 +713,6 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* Transaction detail modal */}
       {selected && (
         <TransactionModal
           transaction={selected}
