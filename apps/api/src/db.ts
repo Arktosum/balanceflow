@@ -4,8 +4,10 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 export const db = new Pool({
-  connectionString: process.env.DATABASE_URL + '?sslmode=require',
-  ssl: { rejectUnauthorized: false },
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false, requestCert: false }
+    : { rejectUnauthorized: false },
   max: 10,
   min: 2,
   idleTimeoutMillis: 60000,
