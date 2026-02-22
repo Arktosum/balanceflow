@@ -9,7 +9,9 @@ import { merchantsRouter } from './routes/merchants'
 import { transactionsRouter } from './routes/transactions'
 import { debtsRouter } from './routes/debts'
 import { analyticsRouter } from './routes/analytics'
-import { db, checkDb } from './db'
+import { checkDb } from './db'
+import { authMiddleware } from './middleware/auth'
+
 
 dotenv.config()
 
@@ -44,14 +46,23 @@ app.get('/health', async (_req, res) => {
   }
 })
 
+// ----------------------------------------
+// ----------------------------------------
+
+
+app.use('/api', authMiddleware)
+// ----------------------------------------
 app.use('/api/accounts', accountsRouter)
 app.use('/api/categories', categoriesRouter)
 app.use('/api/merchants', merchantsRouter)
 app.use('/api/transactions', transactionsRouter)
 app.use('/api/debts', debtsRouter)
 app.use('/api/analytics', analyticsRouter)
-
+// ----------------------------------------
 app.use(errorHandler)
+
+// ----------------------------------------
+// ----------------------------------------
 
 app.listen(PORT, () => {
   console.log(`✅ BalanceFlow API running on http://localhost:${PORT}`)
