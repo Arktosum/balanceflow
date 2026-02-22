@@ -7,8 +7,14 @@ export const db = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  min: 1,                          // always keep at least 1 connection alive
+  idleTimeoutMillis: 60000,        // drop idle connections after 60s
+  connectionTimeoutMillis: 10000,  // wait up to 10s when acquiring a connection
+  allowExitOnIdle: false,          // don't let the pool die when idle
+})
+
+db.on('error', (err) => {
+  console.error('Unexpected DB pool error:', err.message)
 })
 
 db.connect((err, client, release) => {
