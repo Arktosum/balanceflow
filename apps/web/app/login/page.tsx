@@ -25,7 +25,7 @@ export default function LoginPage() {
 
       if (res.ok) {
         localStorage.setItem("bf_token", password);
-        router.push("/");
+        router.replace("/");
       } else {
         setError("Wrong password. Try again.");
       }
