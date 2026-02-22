@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
+import { clearToken } from "@/lib/api";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -11,6 +12,7 @@ import {
   Tag,
   Store,
   Clock,
+  LogOut,
 } from "lucide-react";
 
 const navItems = [
@@ -25,14 +27,20 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function handleLogout() {
+    clearToken();
+    router.push("/login");
+  }
 
   return (
     <aside
       style={{
-        background: "rgba(255, 255, 255, 0.03)",
+        background: "rgba(255,255,255,0.03)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderRight: "1px solid rgba(255, 255, 255, 0.06)",
+        borderRight: "1px solid rgba(255,255,255,0.06)",
       }}
       className="fixed left-0 top-0 h-full w-56 flex flex-col"
     >
@@ -64,7 +72,14 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-white/5">
+      <div className="p-4 border-t border-white/5 flex flex-col gap-2">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-400/5 transition-colors w-full"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
         <p className="text-xs text-gray-600 text-center">BalanceFlow v1.0</p>
       </div>
     </aside>

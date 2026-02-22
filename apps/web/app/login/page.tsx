@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { storeToken } from "@/lib/api";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -24,7 +25,8 @@ export default function LoginPage() {
       });
 
       if (res.ok) {
-        localStorage.setItem("bf_token", password);
+        await storeToken(password);
+
         router.replace("/");
       } else {
         setError("Wrong password. Try again.");
