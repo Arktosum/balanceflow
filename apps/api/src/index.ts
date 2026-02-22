@@ -9,7 +9,7 @@ import { merchantsRouter } from './routes/merchants'
 import { transactionsRouter } from './routes/transactions'
 import { debtsRouter } from './routes/debts'
 import { analyticsRouter } from './routes/analytics'
-
+import { db } from './db'
 
 dotenv.config()
 
@@ -22,12 +22,24 @@ app.use(cors({
   credentials: true,
 }))
 
-app.get('/health', (_req, res) => {
-  res.json({
-    status: 'ok',
-    app: 'BalanceFlow API',
-    timestamp: new Date().toISOString(),
-  })
+app.get('/health', async (_req, res) => {
+  try {
+    await db.query('SELECT 1')
+    res.json({
+      status: 'ok',
+      app: 'BalanceFlow API',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+    })
+  } catch (err: any) {
+    res.status(500).json({
+      status: 'error',
+      app: 'BalanceFlow API',
+      database: 'disconnected',
+      error: err.message,
+      timestamp: new Date().toISOString(),
+    })
+  }
 })
 
 app.use('/api/accounts', accountsRouter)
