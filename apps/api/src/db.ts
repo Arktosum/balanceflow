@@ -5,25 +5,22 @@ dotenv.config()
 
 export const db = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: false, requestCert: false }
-    : { rejectUnauthorized: false },
-  max: 10,
-  min: 2,
-  idleTimeoutMillis: 60000,
+  ssl: { rejectUnauthorized: false },
+  max: 3,
+  idleTimeoutMillis: 0,
   connectionTimeoutMillis: 10000,
-  allowExitOnIdle: false,
 })
 
-db.on('error', (err) => {
-  console.error('Unexpected DB pool error:', err.message)
+db.on('error', (_err) => {
+  // silently recover — pool will reconnect on next query
 })
 
-db.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ Database connection failed:', err.message)
-    process.exit(1)
+export async function checkDb() {
+  const client = await db.connect()
+  try {
+    await client.query('SELECT 1')
+    return true
+  } finally {
+    client.release(true) // true = discard connection, don't return to pool
   }
-  console.log('✅ Database connected')
-  release()
-})
+}
