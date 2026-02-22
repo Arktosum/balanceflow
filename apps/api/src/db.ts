@@ -4,13 +4,13 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 export const db = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL + '?sslmode=require',
   ssl: { rejectUnauthorized: false },
   max: 10,
-  min: 1,                          // always keep at least 1 connection alive
-  idleTimeoutMillis: 60000,        // drop idle connections after 60s
-  connectionTimeoutMillis: 10000,  // wait up to 10s when acquiring a connection
-  allowExitOnIdle: false,          // don't let the pool die when idle
+  min: 2,
+  idleTimeoutMillis: 60000,
+  connectionTimeoutMillis: 10000,
+  allowExitOnIdle: false,
 })
 
 db.on('error', (err) => {
