@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "BalanceFlow",
   description: "Personal finance tracker",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

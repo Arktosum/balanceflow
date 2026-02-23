@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { storeToken } from "@/lib/api";
+import Logo from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -101,11 +102,7 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center">
-          <div className="text-5xl mb-4">⚡</div>
-          <h1 className="text-2xl font-bold text-white">BalanceFlow</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Your personal finance tracker
-          </p>
+          <Logo size="md" theme="dark" showText />
         </div>
 
         {/* Password input */}
