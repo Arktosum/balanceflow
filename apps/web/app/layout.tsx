@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "BalanceFlow",
   description: "Personal finance tracker",
   icons: {
-    icon: "/favicon.svg",
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
   },
 };
 

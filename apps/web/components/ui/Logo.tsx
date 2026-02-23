@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 interface LogoProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl" | number;
   theme?: "light" | "dark";
@@ -11,6 +13,9 @@ export default function Logo({
   showText = false,
   className = "",
 }: LogoProps) {
+  const uid = useId().replace(/:/g, "");
+  const id = `logo-${uid}`;
+
   const sizeMap = { xs: 32, sm: 48, md: 80, lg: 120, xl: 200 };
   const logoSize = typeof size === "number" ? size : sizeMap[size];
 
@@ -33,7 +38,6 @@ export default function Logo({
           centerEnd: "#7C3AED",
         };
 
-  const id = `logo-${theme}-${logoSize}`;
 
   return (
     <div className={`flex flex-col items-center gap-3 ${className}`}>

@@ -14,6 +14,7 @@ import {
   Clock,
   LogOut,
 } from "lucide-react";
+import Logo from "../ui/Logo";
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -44,10 +45,9 @@ export default function Sidebar() {
       }}
       className="fixed left-0 top-0 h-full w-56 flex flex-col"
     >
-      {/* Logo */}
       <div className="p-6 border-b border-white/5">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">⚡</span>
+        <div className="flex items-center gap-3">
+          <Logo size={28} theme="dark" showText={false} />
           <span className="font-bold text-lg text-white">BalanceFlow</span>
         </div>
       </div>
