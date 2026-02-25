@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
-import { Transaction, Account, Merchant, Category } from "@/lib/types";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { showToast } from "@/components/ui/Toast";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils";
+import { Item } from "@/lib/types";
 import {
   Trash2,
   Pencil,
@@ -15,7 +15,15 @@ import {
   Check,
   SlidersHorizontal,
   Search,
+  Plus,
 } from "lucide-react";
+import {
+  Transaction,
+  Account,
+  Merchant,
+  Category,
+  TransactionItem,
+} from "@/lib/types";
 
 function groupByDate(transactions: Transaction[]) {
   const groups: Record<string, Transaction[]> = {};
@@ -52,6 +60,14 @@ function TransactionModal({
   const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [txItems, setTxItems] = useState<TransactionItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+
+  const [allItems, setAllItems] = useState<Item[]>([]);
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemSuggestions, setItemSuggestions] = useState<Item[]>([]);
+  const [editedItems, setEditedItems] = useState<TransactionItem[]>([]);
+  const [removedItemIds, setRemovedItemIds] = useState<string[]>([]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -61,6 +77,38 @@ function TransactionModal({
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  useEffect(() => {
+    async function fetchItems() {
+      setLoadingItems(true);
+      try {
+        const [txItemsRes, allItemsRes] = await Promise.all([
+          api.get(`/api/transactions/${transaction.id}/items`),
+          api.get("/api/items"),
+        ]);
+        setTxItems(txItemsRes.data);
+        setEditedItems(txItemsRes.data);
+        setAllItems(allItemsRes.data);
+      } catch {
+        // no items
+      } finally {
+        setLoadingItems(false);
+      }
+    }
+    fetchItems();
+  }, [transaction.id]);
+  useEffect(() => {
+    if (itemSearch.length > 0) {
+      setItemSuggestions(
+        allItems
+          .filter((i) =>
+            i.name.toLowerCase().includes(itemSearch.toLowerCase()),
+          )
+          .slice(0, 6),
+      );
+    } else {
+      setItemSuggestions([]);
+    }
+  }, [itemSearch, allItems]);
   async function handleDelete() {
     setDeleting(true);
     try {
@@ -79,14 +127,51 @@ function TransactionModal({
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await api.patch(`/api/transactions/${transaction.id}`, {
+      // update transaction fields
+      await api.patch(`/api/transactions/${transaction.id}`, {
         note: note || undefined,
         category_id: categoryId || undefined,
-        amount: Number(amount),
+        amount:
+          editedItems.length > 0
+            ? editedItems.reduce((sum, i) => sum + i.amount * i.quantity, 0)
+            : Number(amount),
         date: new Date(dateValue).toISOString(),
       });
+
+      // remove deleted items
+      await Promise.all(
+        removedItemIds.map((id) => api.delete(`/api/transactions/items/${id}`)),
+      );
+
+      // update existing items
+      await Promise.all(
+        editedItems
+          .filter((i) => i.id) // existing items
+          .map((i) =>
+            api.patch(`/api/transactions/items/${i.id}`, {
+              amount: i.amount,
+              quantity: i.quantity,
+              remarks: i.remarks || undefined,
+            }),
+          ),
+      );
+
+      // add new items (no id yet)
+      await Promise.all(
+        editedItems
+          .filter((i) => !i.id)
+          .map((i) =>
+            api.post(`/api/transactions/${transaction.id}/items`, {
+              item_id: i.item_id,
+              amount: i.amount,
+              quantity: i.quantity,
+              remarks: i.remarks || undefined,
+            }),
+          ),
+      );
+
       showToast("success", "Transaction updated");
-      onUpdated(res.data);
+      window.dispatchEvent(new Event("transaction-added"));
       onClose();
     } catch {
       showToast("error", "Failed to update transaction");
@@ -162,7 +247,85 @@ function TransactionModal({
             {transaction.type}
           </p>
         </div>
-
+        {/* Items breakdown */}
+        {!loadingItems && txItems.length > 0 && (
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <div
+              className="px-4 py-3 border-b"
+              style={{ borderColor: "rgba(255,255,255,0.06)" }}
+            >
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
+                Items
+              </p>
+            </div>
+            <div className="flex flex-col">
+              {txItems.map((item, i) => (
+                <div
+                  key={item.id}
+                  className="flex items-start justify-between px-4 py-3 border-b last:border-0"
+                  style={{ borderColor: "rgba(255,255,255,0.04)" }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {item.category_icon && (
+                        <span className="text-sm">{item.category_icon}</span>
+                      )}
+                      <p className="text-white text-sm font-medium">
+                        {item.item_name}
+                      </p>
+                      {item.quantity !== 1 && (
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "rgba(255,255,255,0.06)",
+                            color: "#9ca3af",
+                          }}
+                        >
+                          x{item.quantity}
+                        </span>
+                      )}
+                    </div>
+                    {item.remarks && (
+                      <p className="text-gray-600 text-xs mt-0.5 truncate">
+                        {item.remarks}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <p className="text-white text-sm font-semibold">
+                      {formatCurrency(item.amount * item.quantity)}
+                    </p>
+                    {item.quantity !== 1 && (
+                      <p className="text-gray-600 text-xs">
+                        {formatCurrency(item.amount)} each
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div
+              className="flex items-center justify-between px-4 py-3"
+              style={{
+                background: "rgba(108,99,255,0.06)",
+                borderTop: "1px solid rgba(108,99,255,0.1)",
+              }}
+            >
+              <span className="text-gray-400 text-sm font-medium">Total</span>
+              <span className="text-white text-base font-bold">
+                {formatCurrency(
+                  txItems.reduce((sum, i) => sum + i.amount * i.quantity, 0),
+                )}
+              </span>
+            </div>
+          </div>
+        )}
         {/* Details */}
         <div className="flex flex-col gap-3">
           <div
@@ -241,7 +404,277 @@ function TransactionModal({
               </span>
             )}
           </div>
+          {/* Items editing */}
+          {editedItems.length > 0 || editing ? (
+            <div>
+              <p className="text-gray-500 text-xs uppercase tracking-wider font-semibold mb-3">
+                Items
+              </p>
 
+              <div className="flex flex-col gap-2 mb-2">
+                {editedItems.map((item) => (
+                  <div
+                    key={item.id ?? item.item_id}
+                    className="rounded-xl p-3 flex flex-col gap-2"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-white text-sm font-medium">
+                        {item.item_name}
+                      </p>
+                      {editing && (
+                        <button
+                          onClick={() => {
+                            if (item.id)
+                              setRemovedItemIds((prev) => [...prev, item.id]);
+                            setEditedItems((prev) =>
+                              prev.filter(
+                                (i) =>
+                                  (i.id ?? i.item_id) !==
+                                  (item.id ?? item.item_id),
+                              ),
+                            );
+                          }}
+                          className="text-gray-600 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+
+                    {editing ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div
+                          className="flex items-center gap-1 rounded-lg px-3 py-2"
+                          style={{ background: "rgba(255,255,255,0.05)" }}
+                        >
+                          <span className="text-gray-500 text-xs">₹</span>
+                          <input
+                            type="number"
+                            value={item.amount}
+                            onChange={(e) =>
+                              setEditedItems((prev) =>
+                                prev.map((i) =>
+                                  (i.id ?? i.item_id) ===
+                                  (item.id ?? item.item_id)
+                                    ? {
+                                        ...i,
+                                        amount: parseFloat(e.target.value) || 0,
+                                      }
+                                    : i,
+                                ),
+                              )
+                            }
+                            className="bg-transparent text-white text-sm font-bold outline-none w-full"
+                          />
+                        </div>
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            setEditedItems((prev) =>
+                              prev.map((i) =>
+                                (i.id ?? i.item_id) ===
+                                (item.id ?? item.item_id)
+                                  ? {
+                                      ...i,
+                                      quantity: parseFloat(e.target.value) || 1,
+                                    }
+                                  : i,
+                              ),
+                            )
+                          }
+                          className="rounded-lg px-3 py-2 text-white text-sm outline-none"
+                          style={{ background: "rgba(255,255,255,0.05)" }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Remarks"
+                          value={item.remarks ?? ""}
+                          onChange={(e) =>
+                            setEditedItems((prev) =>
+                              prev.map((i) =>
+                                (i.id ?? i.item_id) ===
+                                (item.id ?? item.item_id)
+                                  ? { ...i, remarks: e.target.value }
+                                  : i,
+                              ),
+                            )
+                          }
+                          className="col-span-2 rounded-lg px-3 py-2 text-white text-sm outline-none placeholder-gray-700"
+                          style={{ background: "rgba(255,255,255,0.05)" }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 text-xs">
+                          {item.quantity > 1
+                            ? `${item.quantity} × ${formatCurrency(item.amount)}`
+                            : ""}
+                          {item.remarks ? ` · ${item.remarks}` : ""}
+                        </span>
+                        <span className="text-white text-sm font-semibold">
+                          {formatCurrency(item.amount * item.quantity)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add item in edit mode */}
+              {editing && (
+                <div className="relative">
+                  <div
+                    className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px dashed rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <Plus size={14} className="text-gray-600" />
+                    <input
+                      type="text"
+                      placeholder="Add item..."
+                      value={itemSearch}
+                      onChange={(e) => setItemSearch(e.target.value)}
+                      className="bg-transparent text-white text-sm outline-none flex-1 placeholder-gray-600"
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter" && itemSearch.trim()) {
+                          const match = allItems.find(
+                            (i) =>
+                              i.name.toLowerCase() === itemSearch.toLowerCase(),
+                          );
+                          const item =
+                            match ??
+                            (
+                              await api.post("/api/items", {
+                                name: itemSearch.trim(),
+                              })
+                            ).data;
+                          setEditedItems((prev) => [
+                            ...prev,
+                            {
+                              id: "",
+                              transaction_id: transaction.id,
+                              item_id: item.id,
+                              item_name: item.name,
+                              amount: item.last_price > 0 ? item.last_price : 0,
+                              quantity: 1,
+                              remarks: "",
+                              created_at: new Date().toISOString(),
+                            },
+                          ]);
+                          setItemSearch("");
+                          setItemSuggestions([]);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {itemSuggestions.length > 0 && (
+                    <div
+                      className="absolute top-full left-0 right-0 rounded-xl mt-1 overflow-hidden z-10"
+                      style={{
+                        background: "#1a1d2e",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      {itemSuggestions.map((i) => (
+                        <button
+                          key={i.id}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setEditedItems((prev) => [
+                              ...prev,
+                              {
+                                id: "",
+                                transaction_id: transaction.id,
+                                item_id: i.id,
+                                item_name: i.name,
+                                amount: i.last_price > 0 ? i.last_price : 0,
+                                quantity: 1,
+                                remarks: "",
+                                created_at: new Date().toISOString(),
+                              },
+                            ]);
+                            setItemSearch("");
+                            setItemSuggestions([]);
+                          }}
+                          className="w-full text-left px-3 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-between"
+                        >
+                          <span>{i.name}</span>
+                          {i.last_price > 0 && (
+                            <span className="text-xs text-gray-500">
+                              {formatCurrency(i.last_price)}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                      {itemSearch.trim() &&
+                        !allItems.find(
+                          (i) =>
+                            i.name.toLowerCase() === itemSearch.toLowerCase(),
+                        ) && (
+                          <button
+                            onMouseDown={async (e) => {
+                              e.preventDefault();
+                              const res = await api.post("/api/items", {
+                                name: itemSearch.trim(),
+                              });
+                              setEditedItems((prev) => [
+                                ...prev,
+                                {
+                                  id: "",
+                                  transaction_id: transaction.id,
+                                  item_id: res.data.id,
+                                  item_name: res.data.name,
+                                  amount: 0,
+                                  quantity: 1,
+                                  remarks: "",
+                                  created_at: new Date().toISOString(),
+                                },
+                              ]);
+                              setItemSearch("");
+                              setItemSuggestions([]);
+                            }}
+                            className="w-full text-left px-3 py-2.5 text-sm text-purple-400 hover:bg-white/5 border-t transition-colors"
+                            style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                          >
+                            + Create "{itemSearch.trim()}"
+                          </button>
+                        )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Running total */}
+              {editedItems.length > 0 && (
+                <div
+                  className="flex items-center justify-between rounded-xl px-4 py-3 mt-2"
+                  style={{
+                    background: "rgba(108,99,255,0.08)",
+                    border: "1px solid rgba(108,99,255,0.15)",
+                  }}
+                >
+                  <span className="text-gray-400 text-sm">Total</span>
+                  <span className="text-white font-bold">
+                    {formatCurrency(
+                      editedItems.reduce(
+                        (sum, i) => sum + i.amount * i.quantity,
+                        0,
+                      ),
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : null}
           <div
             className="flex justify-between items-center py-2 border-b"
             style={{ borderColor: "rgba(255,255,255,0.06)" }}
@@ -678,6 +1111,12 @@ export default function TransactionsPage() {
                           <span className="text-gray-600 text-xs">
                             {tx.account_name}
                           </span>
+                          {tx.item_count > 0 && (
+                            <span className="text-xs text-gray-600">
+                              · {tx.item_count} item
+                              {tx.item_count !== 1 ? "s" : ""}
+                            </span>
+                          )}
                           {tx.status === "pending" && (
                             <span
                               className="text-xs px-2 py-0.5 rounded-full"

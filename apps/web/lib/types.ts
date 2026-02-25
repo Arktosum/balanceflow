@@ -48,6 +48,7 @@ export interface Transaction {
   category_icon: string | null
   category_color: string | null
   merchant_name: string | null
+  item_count: number
 }
 
 export interface Debt {

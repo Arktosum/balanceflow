@@ -106,13 +106,21 @@ router.get('/', asyncHandler(async (req, res) => {
        a.name as account_name, a.type as account_type, a.color as account_color,
        ta.name as to_account_name,
        c.name as category_name, c.icon as category_icon, c.color as category_color,
-       m.name as merchant_name
+       m.name as merchant_name,
+       COUNT(ti.id)::int as item_count
      FROM transactions t
      LEFT JOIN accounts a ON t.account_id = a.id
      LEFT JOIN accounts ta ON t.to_account_id = ta.id
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN merchants m ON t.merchant_id = m.id
+     LEFT JOIN transaction_items ti ON ti.transaction_id = t.id
      ${where}
+     GROUP BY
+       t.id,
+       a.name, a.type, a.color,
+       ta.name,
+       c.name, c.icon, c.color,
+       m.name
      ORDER BY t.date DESC
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
     values

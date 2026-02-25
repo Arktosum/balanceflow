@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { clearToken } from "@/lib/api";
+import Logo from "../ui/Logo";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -13,9 +14,8 @@ import {
   Store,
   Clock,
   LogOut,
+  ShoppingBag,
 } from "lucide-react";
-import Logo from "../ui/Logo";
-
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/transactions", icon: ArrowLeftRight, label: "Transactions" },
@@ -24,6 +24,7 @@ const navItems = [
   { href: "/debts", icon: Clock, label: "Debts" },
   { href: "/categories", icon: Tag, label: "Categories" },
   { href: "/merchants", icon: Store, label: "Merchants" },
+  { href: "/items", icon: ShoppingBag, label: "Items" },
 ];
 
 export default function Sidebar() {
