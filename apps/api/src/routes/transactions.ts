@@ -40,11 +40,13 @@ const CreateTransactionSchema = z.discriminatedUnion('type', [
 
 const UpdateTransactionSchema = z.object({
   amount: z.coerce.number().positive().optional(),
-  category_id: z.string().uuid().optional(),
-  merchant_id: z.string().uuid().optional(),
-  note: z.string().max(500).optional(),
+  account_id: z.string().uuid().optional(),
+  category_id: z.string().uuid().nullable().optional(),
+  merchant_id: z.string().uuid().nullable().optional(),
+  note: z.string().max(500).nullable().optional(),
   date: z.string().datetime().optional(),
 })
+
 
 const QuerySchema = z.object({
   account_id: z.string().uuid().optional(),
@@ -240,7 +242,7 @@ router.post('/', asyncHandler(async (req, res) => {
   }
 }))
 
-// PATCH /api/transactions/:id — only allows editing metadata, not type/amount/account
+// PATCH /api/transactions/:id
 router.patch('/:id', asyncHandler(async (req, res) => {
   const data = UpdateTransactionSchema.parse(req.body)
 
@@ -251,12 +253,12 @@ router.patch('/:id', asyncHandler(async (req, res) => {
   if (existing.rows.length === 0) throw new AppError(404, 'Transaction not found')
 
   const tx = existing.rows[0]
-
-  // if amount changed and transaction is completed, adjust the balance
   const client = await db.connect()
+
   try {
     await client.query('BEGIN')
 
+    // If amount changed and tx is completed, adjust balances on old account
     if (data.amount && data.amount !== parseFloat(tx.amount) && tx.status === 'completed') {
       const diff = data.amount - parseFloat(tx.amount)
       if (tx.type === 'expense') {
@@ -272,16 +274,63 @@ router.patch('/:id', asyncHandler(async (req, res) => {
       }
     }
 
+    // If account changed and tx is completed, reverse old account and apply to new
+    if (data.account_id && data.account_id !== tx.account_id && tx.status === 'completed') {
+      if (tx.type === 'expense') {
+        await client.query(
+          'UPDATE accounts SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
+          [tx.amount, tx.account_id]
+        )
+        await client.query(
+          'UPDATE accounts SET balance = balance - $1, updated_at = NOW() WHERE id = $2',
+          [data.amount ?? tx.amount, data.account_id]
+        )
+      } else if (tx.type === 'income') {
+        await client.query(
+          'UPDATE accounts SET balance = balance - $1, updated_at = NOW() WHERE id = $2',
+          [tx.amount, tx.account_id]
+        )
+        await client.query(
+          'UPDATE accounts SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
+          [data.amount ?? tx.amount, data.account_id]
+        )
+      }
+    }
+
+    // If merchant changed, update counts
+    if (data.merchant_id !== undefined && data.merchant_id !== tx.merchant_id) {
+      if (tx.merchant_id) {
+        await client.query(
+          'UPDATE merchants SET transaction_count = GREATEST(transaction_count - 1, 0), updated_at = NOW() WHERE id = $1',
+          [tx.merchant_id]
+        )
+      }
+      if (data.merchant_id) {
+        await client.query(
+          'UPDATE merchants SET transaction_count = transaction_count + 1, updated_at = NOW() WHERE id = $1',
+          [data.merchant_id]
+        )
+      }
+    }
+
     const result = await client.query(
       `UPDATE transactions
-       SET amount = $1, category_id = $2, merchant_id = $3, note = $4, date = $5, updated_at = NOW()
-       WHERE id = $6
+       SET
+         amount      = $1,
+         account_id  = $2,
+         category_id = $3,
+         merchant_id = $4,
+         note        = $5,
+         date        = $6,
+         updated_at  = NOW()
+       WHERE id = $7
        RETURNING *`,
       [
         data.amount ?? tx.amount,
-        data.category_id ?? tx.category_id,
-        data.merchant_id ?? tx.merchant_id,
-        data.note ?? tx.note,
+        data.account_id ?? tx.account_id,
+        'category_id' in data ? data.category_id : tx.category_id,
+        'merchant_id' in data ? data.merchant_id : tx.merchant_id,
+        'note' in data ? data.note : tx.note,
         data.date ?? tx.date,
         req.params.id,
       ]
@@ -359,4 +408,6 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   }
 }))
 
+
 export { router as transactionsRouter }
+
