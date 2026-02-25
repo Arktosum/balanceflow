@@ -52,7 +52,6 @@ function TransactionModal({
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Items state
   const [loadingItems, setLoadingItems] = useState(true);
   const [allItems, setAllItems] = useState<Item[]>([]);
   const [itemSearch, setItemSearch] = useState("");
@@ -207,18 +206,18 @@ function TransactionModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-lg rounded-t-3xl flex flex-col max-h-[90vh]"
+        className="w-full max-w-lg flex flex-col rounded-3xl overflow-hidden"
         style={{
-          background: "rgba(20,22,35,0.98)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          backdropFilter: "blur(20px)",
+          background: "rgba(15,17,26,0.98)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          height: "85vh",
         }}
       >
         {/* Fixed header */}
@@ -226,110 +225,96 @@ function TransactionModal({
           className="flex items-center justify-between px-6 py-4 flex-shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <h2 className="text-lg font-bold text-white">Transaction Details</h2>
+          <div>
+            <h2 className="text-lg font-bold text-white">
+              Transaction Details
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5 capitalize">
+              {transaction.type}
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-gray-400 hover:text-white transition-colors"
+            className="p-2 rounded-xl text-gray-400 hover:text-white transition-colors"
             style={{ background: "rgba(255,255,255,0.05)" }}
           >
             <X size={16} />
           </button>
         </div>
+
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-          {/* Amount */}
-          <div className="text-center py-4">
-            <p className="text-4xl font-bold" style={{ color: amountColor }}>
+        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
+          {/* Amount hero */}
+          <div className="text-center py-2">
+            <p className="text-5xl font-bold" style={{ color: amountColor }}>
               {amountPrefix}
               {formatCurrency(
                 editedItems.length > 0 ? derivedTotal : transaction.amount,
               )}
             </p>
-            <p className="text-gray-500 text-sm mt-1 capitalize">
-              {transaction.type}
-            </p>
           </div>
 
-          {/* Items — unified read/edit block */}
+          {/* Items section */}
           {!loadingItems && (editedItems.length > 0 || editing) && (
             <div
-              className="rounded-2xl overflow-hidden"
+              className="rounded-2xl overflow-visible"
               style={{
                 background: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.06)",
               }}
             >
               <div
-                className="px-4 py-3 border-b"
+                className="px-4 py-3 border-b flex items-center justify-between"
                 style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
                 <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
                   Items
                 </p>
+                <p className="text-xs text-gray-600">
+                  {editedItems.length} item{editedItems.length !== 1 ? "s" : ""}
+                </p>
               </div>
 
-              <div className="flex flex-col">
-                {editedItems.map((item) => (
-                  <div
-                    key={item.id || item.item_id}
-                    className="px-4 py-3 border-b last:border-0 flex flex-col gap-2"
-                    style={{ borderColor: "rgba(255,255,255,0.04)" }}
-                  >
-                    {/* Item name + delete */}
-                    <div className="flex items-center justify-between">
-                      <p className="text-white text-sm font-medium">
-                        {item.item_name}
-                      </p>
-                      {editing && (
-                        <button
-                          onClick={() => {
-                            if (item.id)
-                              setRemovedItemIds((prev) => [...prev, item.id]);
-                            setEditedItems((prev) =>
-                              prev.filter(
-                                (i) =>
-                                  (i.id || i.item_id) !==
-                                  (item.id || item.item_id),
-                              ),
-                            );
-                          }}
-                          className="text-gray-600 hover:text-red-400 transition-colors ml-2"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
+              {editedItems.map((item) => (
+                <div
+                  key={item.id || item.item_id}
+                  className="px-4 py-4 border-b last:border-0 flex flex-col gap-3"
+                  style={{ borderColor: "rgba(255,255,255,0.04)" }}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-white text-sm font-semibold">
+                      {item.item_name}
+                    </p>
+                    {editing && (
+                      <button
+                        onClick={() => {
+                          if (item.id)
+                            setRemovedItemIds((prev) => [...prev, item.id]);
+                          setEditedItems((prev) =>
+                            prev.filter(
+                              (i) =>
+                                (i.id || i.item_id) !==
+                                (item.id || item.item_id),
+                            ),
+                          );
+                        }}
+                        className="text-gray-600 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
 
-                    {editing ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div
-                          className="flex items-center gap-1 rounded-lg px-3 py-2"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
-                        >
-                          <span className="text-gray-500 text-xs">₹</span>
-                          <input
-                            type="number"
-                            value={item.amount}
-                            onChange={(e) =>
-                              setEditedItems((prev) =>
-                                prev.map((i) =>
-                                  (i.id || i.item_id) ===
-                                  (item.id || item.item_id)
-                                    ? {
-                                        ...i,
-                                        amount: parseFloat(e.target.value) || 0,
-                                      }
-                                    : i,
-                                ),
-                              )
-                            }
-                            className="bg-transparent text-white text-sm font-bold outline-none w-full"
-                          />
-                        </div>
+                  {editing ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+                        style={{ background: "rgba(255,255,255,0.05)" }}
+                      >
+                        <span className="text-gray-500 text-xs">₹</span>
                         <input
                           type="number"
-                          placeholder="Qty"
-                          value={item.quantity}
+                          value={item.amount}
                           onChange={(e) =>
                             setEditedItems((prev) =>
                               prev.map((i) =>
@@ -337,51 +322,72 @@ function TransactionModal({
                                 (item.id || item.item_id)
                                   ? {
                                       ...i,
-                                      quantity: parseFloat(e.target.value) || 1,
+                                      amount: parseFloat(e.target.value) || 0,
                                     }
                                   : i,
                               ),
                             )
                           }
-                          className="rounded-lg px-3 py-2 text-white text-sm outline-none"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Remarks"
-                          value={item.remarks ?? ""}
-                          onChange={(e) =>
-                            setEditedItems((prev) =>
-                              prev.map((i) =>
-                                (i.id || i.item_id) ===
-                                (item.id || item.item_id)
-                                  ? { ...i, remarks: e.target.value }
-                                  : i,
-                              ),
-                            )
-                          }
-                          className="col-span-2 rounded-lg px-3 py-2 text-white text-sm outline-none placeholder-gray-700"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          className="bg-transparent text-white text-sm font-bold outline-none w-full"
                         />
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500 text-xs">
-                          {item.quantity > 1
-                            ? `${item.quantity} × ${formatCurrency(item.amount)}`
-                            : ""}
-                          {item.remarks ? ` · ${item.remarks}` : ""}
-                        </span>
-                        <span className="text-white text-sm font-semibold">
-                          {formatCurrency(item.amount * item.quantity)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          setEditedItems((prev) =>
+                            prev.map((i) =>
+                              (i.id || i.item_id) === (item.id || item.item_id)
+                                ? {
+                                    ...i,
+                                    quantity: parseFloat(e.target.value) || 1,
+                                  }
+                                : i,
+                            ),
+                          )
+                        }
+                        className="rounded-xl px-3 py-2.5 text-white text-sm outline-none"
+                        style={{ background: "rgba(255,255,255,0.05)" }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Remarks (optional)"
+                        value={item.remarks ?? ""}
+                        onChange={(e) =>
+                          setEditedItems((prev) =>
+                            prev.map((i) =>
+                              (i.id || i.item_id) === (item.id || item.item_id)
+                                ? { ...i, remarks: e.target.value }
+                                : i,
+                            ),
+                          )
+                        }
+                        className="col-span-2 rounded-xl px-3 py-2.5 text-white text-sm outline-none placeholder-gray-700"
+                        style={{ background: "rgba(255,255,255,0.05)" }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 text-xs">
+                        {item.quantity > 1
+                          ? `${item.quantity} × ${formatCurrency(item.amount)}`
+                          : ""}
+                        {item.remarks
+                          ? item.quantity > 1
+                            ? ` · ${item.remarks}`
+                            : item.remarks
+                          : ""}
+                      </span>
+                      <span className="text-white text-sm font-bold">
+                        {formatCurrency(item.amount * item.quantity)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
 
-              {/* Add item input — only in edit mode */}
+              {/* Add item — only in edit mode */}
               {editing && (
                 <div
                   className="px-4 py-3 border-t"
@@ -392,7 +398,7 @@ function TransactionModal({
                       className="flex items-center gap-2 rounded-xl px-3 py-2.5"
                       style={{
                         background: "rgba(255,255,255,0.04)",
-                        border: "1px dashed rgba(255,255,255,0.08)",
+                        border: "1px dashed rgba(255,255,255,0.1)",
                       }}
                     >
                       <Plus size={14} className="text-gray-600" />
@@ -428,7 +434,7 @@ function TransactionModal({
 
                     {itemSuggestions.length > 0 && (
                       <div
-                        className="absolute bottom-full left-0 right-0 rounded-xl mb-1 overflow-hidden z-10"
+                        className="absolute top-full left-0 right-0 rounded-xl mt-1 overflow-hidden z-20"
                         style={{
                           background: "#1a1d2e",
                           border: "1px solid rgba(255,255,255,0.1)",
@@ -480,7 +486,7 @@ function TransactionModal({
                 </div>
               )}
 
-              {/* Total */}
+              {/* Total row */}
               <div
                 className="flex items-center justify-between px-4 py-3"
                 style={{
@@ -496,144 +502,163 @@ function TransactionModal({
             </div>
           )}
 
-          {/* Details */}
-          <div className="flex flex-col gap-3">
+          {/* Details section */}
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
             <div
-              className="flex justify-between items-center py-2 border-b"
+              className="px-4 py-3 border-b"
               style={{ borderColor: "rgba(255,255,255,0.06)" }}
             >
-              <span className="text-gray-500 text-sm">Account</span>
-              <span className="text-white text-sm font-medium">
-                {transaction.account_name}
-              </span>
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
+                Details
+              </p>
             </div>
 
-            {transaction.to_account_name && (
+            <div className="flex flex-col">
               <div
-                className="flex justify-between items-center py-2 border-b"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                className="flex justify-between items-center px-4 py-3 border-b"
+                style={{ borderColor: "rgba(255,255,255,0.04)" }}
               >
-                <span className="text-gray-500 text-sm">To Account</span>
+                <span className="text-gray-500 text-sm">Account</span>
                 <span className="text-white text-sm font-medium">
-                  {transaction.to_account_name}
+                  {transaction.account_name}
                 </span>
               </div>
-            )}
 
-            {transaction.merchant_name && (
-              <div
-                className="flex justify-between items-center py-2 border-b"
-                style={{ borderColor: "rgba(255,255,255,0.06)" }}
-              >
-                <span className="text-gray-500 text-sm">Merchant</span>
-                <span className="text-white text-sm font-medium">
-                  {transaction.merchant_name}
-                </span>
-              </div>
-            )}
-
-            <div
-              className="flex justify-between items-center py-2 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              <span className="text-gray-500 text-sm">Status</span>
-              <span
-                className="text-xs px-2 py-1 rounded-full font-medium capitalize"
-                style={{
-                  background:
-                    transaction.status === "completed"
-                      ? "rgba(34,197,94,0.1)"
-                      : "rgba(245,158,11,0.1)",
-                  color:
-                    transaction.status === "completed" ? "#22c55e" : "#f59e0b",
-                }}
-              >
-                {transaction.status}
-              </span>
-            </div>
-
-            <div
-              className="flex justify-between items-center py-2 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              <span className="text-gray-500 text-sm">Date</span>
-              {editing ? (
-                <input
-                  type="datetime-local"
-                  value={dateValue}
-                  onChange={(e) => setDateValue(e.target.value)}
-                  className="rounded-lg px-3 py-1 text-white text-sm outline-none"
-                  style={{
-                    background: "rgba(255,255,255,0.08)",
-                    colorScheme: "dark",
-                  }}
-                />
-              ) : (
-                <span className="text-white text-sm font-medium">
-                  {formatDate(transaction.date)} at{" "}
-                  {formatTime(transaction.date)}
-                </span>
-              )}
-            </div>
-
-            <div
-              className="flex justify-between items-center py-2 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.06)" }}
-            >
-              <span className="text-gray-500 text-sm">Category</span>
-              {editing ? (
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="rounded-lg px-3 py-1 text-white text-sm outline-none"
-                  style={{ background: "rgba(255,255,255,0.08)" }}
+              {transaction.to_account_name && (
+                <div
+                  className="flex justify-between items-center px-4 py-3 border-b"
+                  style={{ borderColor: "rgba(255,255,255,0.04)" }}
                 >
-                  <option value="" style={{ background: "#1a1d2e" }}>
-                    None
-                  </option>
-                  {categories.map((c) => (
-                    <option
-                      key={c.id}
-                      value={c.id}
-                      style={{ background: "#1a1d2e" }}
-                    >
-                      {c.icon} {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-white text-sm font-medium">
-                  {transaction.category_icon}{" "}
-                  {transaction.category_name ?? "None"}
-                </span>
+                  <span className="text-gray-500 text-sm">To Account</span>
+                  <span className="text-white text-sm font-medium">
+                    {transaction.to_account_name}
+                  </span>
+                </div>
               )}
-            </div>
 
-            <div className="flex justify-between items-center py-2">
-              <span className="text-gray-500 text-sm">Note</span>
-              {editing ? (
-                <input
-                  type="text"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add a note"
-                  className="rounded-lg px-3 py-1 text-white text-sm outline-none placeholder-gray-700"
-                  style={{ background: "rgba(255,255,255,0.08)" }}
-                />
-              ) : (
-                <span className="text-white text-sm font-medium">
-                  {transaction.note ?? "—"}
-                </span>
+              {transaction.merchant_name && (
+                <div
+                  className="flex justify-between items-center px-4 py-3 border-b"
+                  style={{ borderColor: "rgba(255,255,255,0.04)" }}
+                >
+                  <span className="text-gray-500 text-sm">Merchant</span>
+                  <span className="text-white text-sm font-medium">
+                    {transaction.merchant_name}
+                  </span>
+                </div>
               )}
+
+              <div
+                className="flex justify-between items-center px-4 py-3 border-b"
+                style={{ borderColor: "rgba(255,255,255,0.04)" }}
+              >
+                <span className="text-gray-500 text-sm">Status</span>
+                <span
+                  className="text-xs px-2 py-1 rounded-full font-medium capitalize"
+                  style={{
+                    background:
+                      transaction.status === "completed"
+                        ? "rgba(34,197,94,0.1)"
+                        : "rgba(245,158,11,0.1)",
+                    color:
+                      transaction.status === "completed"
+                        ? "#22c55e"
+                        : "#f59e0b",
+                  }}
+                >
+                  {transaction.status}
+                </span>
+              </div>
+
+              <div
+                className="flex justify-between items-center px-4 py-3 border-b"
+                style={{ borderColor: "rgba(255,255,255,0.04)" }}
+              >
+                <span className="text-gray-500 text-sm">Date</span>
+                {editing ? (
+                  <input
+                    type="datetime-local"
+                    value={dateValue}
+                    onChange={(e) => setDateValue(e.target.value)}
+                    className="rounded-lg px-3 py-1 text-white text-sm outline-none"
+                    style={{
+                      background: "rgba(255,255,255,0.08)",
+                      colorScheme: "dark",
+                    }}
+                  />
+                ) : (
+                  <span className="text-white text-sm font-medium">
+                    {formatDate(transaction.date)} at{" "}
+                    {formatTime(transaction.date)}
+                  </span>
+                )}
+              </div>
+
+              <div
+                className="flex justify-between items-center px-4 py-3 border-b"
+                style={{ borderColor: "rgba(255,255,255,0.04)" }}
+              >
+                <span className="text-gray-500 text-sm">Category</span>
+                {editing ? (
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="rounded-lg px-3 py-1 text-white text-sm outline-none"
+                    style={{ background: "rgba(255,255,255,0.08)" }}
+                  >
+                    <option value="" style={{ background: "#1a1d2e" }}>
+                      None
+                    </option>
+                    {categories.map((c) => (
+                      <option
+                        key={c.id}
+                        value={c.id}
+                        style={{ background: "#1a1d2e" }}
+                      >
+                        {c.icon} {c.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-white text-sm font-medium">
+                    {transaction.category_icon}{" "}
+                    {transaction.category_name ?? "None"}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center px-4 py-3">
+                <span className="text-gray-500 text-sm">Note</span>
+                {editing ? (
+                  <input
+                    type="text"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Add a note"
+                    className="rounded-lg px-3 py-1 text-white text-sm outline-none placeholder-gray-700 flex-1 ml-4 text-right"
+                    style={{ background: "rgba(255,255,255,0.08)" }}
+                  />
+                ) : (
+                  <span className="text-white text-sm font-medium">
+                    {transaction.note ?? "—"}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
         {/* Fixed footer */}
         <div
           className="px-6 py-4 flex-shrink-0"
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
         >
-          {/* Actions */}
           {editing ? (
             <div className="flex gap-3">
               <button
@@ -653,7 +678,7 @@ function TransactionModal({
               </button>
             </div>
           ) : confirmDelete ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               <p className="text-center text-sm text-gray-400">
                 Are you sure? This cannot be undone.
               </p>
