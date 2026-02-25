@@ -94,3 +94,31 @@ export interface TrendData {
     net: number
   }[]
 }
+
+export interface Item {
+  id: string
+  name: string
+  category_id?: string
+  category_name?: string
+  category_icon?: string
+  category_color?: string
+  usage_count: number
+  last_price: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TransactionItem {
+  id: string
+  transaction_id: string
+  item_id: string
+  item_name: string
+  category_id?: string
+  category_name?: string
+  category_icon?: string
+  category_color?: string
+  amount: number
+  quantity: number
+  remarks?: string
+  created_at: string
+}
