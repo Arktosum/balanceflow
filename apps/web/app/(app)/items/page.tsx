@@ -8,7 +8,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { showToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
-import { Pencil, Trash2, X, TrendingUp } from "lucide-react";
+import { Pencil, Trash2, X, TrendingUp, Plus } from "lucide-react";
 
 function ItemFormModal({
   item,
@@ -87,6 +87,9 @@ function ItemFormModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+            }}
             className="w-full rounded-xl px-4 py-3 text-white text-sm outline-none"
             style={{ background: "rgba(255,255,255,0.06)" }}
           />
@@ -126,6 +129,124 @@ function ItemFormModal({
   );
 }
 
+function CreateModal({
+  categories,
+  onClose,
+  onSaved,
+}: {
+  categories: Category[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  async function handleSubmit() {
+    if (!name.trim()) {
+      showToast("error", "Name is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.post("/api/items", {
+        name: name.trim(),
+        category_id: categoryId || undefined,
+      });
+      showToast("success", `${name} created!`);
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      showToast("error", err.response?.data?.error ?? "Something went wrong");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="w-full max-w-lg rounded-t-3xl p-6 flex flex-col gap-5"
+        style={{
+          background: "rgba(20,22,35,0.98)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          backdropFilter: "blur(20px)",
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">New Item</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+            placeholder="e.g. Coffee, Rice, Petrol"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmit();
+            }}
+            className="w-full rounded-xl px-4 py-3 text-white text-sm outline-none placeholder-gray-700"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">
+            Category (optional)
+          </label>
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="w-full rounded-xl px-4 py-3 text-white text-sm outline-none"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
+            <option value="" style={{ background: "#1a1d2e" }}>
+              None
+            </option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id} style={{ background: "#1a1d2e" }}>
+                {c.icon} {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={handleSubmit}
+          disabled={saving}
+          className="w-full py-4 rounded-xl font-semibold text-white disabled:opacity-50"
+          style={{ background: "linear-gradient(135deg, #6C63FF, #00D2FF)" }}
+        >
+          {saving ? "Creating..." : "Create Item"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ItemRow({
   item,
   onEdit,
@@ -137,7 +258,6 @@ function ItemRow({
 }) {
   return (
     <Card className="flex items-center gap-4">
-      {/* Avatar */}
       <div
         className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0"
         style={{
@@ -150,7 +270,6 @@ function ItemRow({
         {item.category_icon ?? item.name.charAt(0).toUpperCase()}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-medium">{item.name}</p>
         <div className="flex items-center gap-3 mt-0.5">
@@ -168,7 +287,6 @@ function ItemRow({
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex gap-1 flex-shrink-0">
         <button
           onClick={onEdit}
@@ -194,6 +312,7 @@ export default function ItemsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Item | null>(null);
+  const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Item | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -237,11 +356,6 @@ export default function ItemsPage() {
   );
   const unused = items.filter((i) => i.usage_count === 0);
 
-  const totalSpent = items.reduce(
-    (sum, i) => sum + i.last_price * i.usage_count,
-    0,
-  );
-
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -252,6 +366,14 @@ export default function ItemsPage() {
             {items.length} items tracked
           </p>
         </div>
+        <button
+          onClick={() => setCreating(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ background: "linear-gradient(135deg, #6C63FF, #00D2FF)" }}
+        >
+          <Plus size={16} />
+          New Item
+        </button>
       </div>
 
       {/* Summary */}
@@ -290,7 +412,7 @@ export default function ItemsPage() {
         <EmptyState
           icon="🛍️"
           message="No items yet"
-          subMessage="Items are created automatically when you add transactions"
+          subMessage="Items are created automatically when you add transactions, or tap New Item to create one"
         />
       ) : (
         <div className="flex flex-col gap-6">
@@ -350,6 +472,15 @@ export default function ItemsPage() {
         </div>
       )}
 
+      {/* Create modal */}
+      {creating && (
+        <CreateModal
+          categories={categories}
+          onClose={() => setCreating(false)}
+          onSaved={fetchData}
+        />
+      )}
+
       {/* Edit modal */}
       {editing && (
         <ItemFormModal
@@ -365,6 +496,9 @@ export default function ItemsPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmDelete(null);
+          }}
         >
           <Card className="w-full max-w-sm p-6 flex flex-col gap-4">
             <h3 className="text-white font-bold text-lg">Delete Item?</h3>
