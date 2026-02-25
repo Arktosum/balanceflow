@@ -12,6 +12,8 @@ import { analyticsRouter } from './routes/analytics'
 
 import { authMiddleware } from './middleware/auth'
 import { db } from './db'
+import itemsRouter from './routes/items'
+import transactionItemsRouter from './routes/transactionItems'
 
 dotenv.config()
 
@@ -58,6 +60,11 @@ app.use('/api/merchants', merchantsRouter)
 app.use('/api/transactions', transactionsRouter)
 app.use('/api/debts', debtsRouter)
 app.use('/api/analytics', analyticsRouter)
+
+app.use('/api/items', itemsRouter)
+app.use('/api/transactions', transactionItemsRouter)
+
+
 // ----------------------------------------
 app.use(errorHandler)
 
