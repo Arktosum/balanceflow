@@ -56,7 +56,7 @@ const QuerySchema = z.object({
   status: z.enum(['completed', 'pending']).optional(),
   from: z.string().optional(),
   to: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  limit: z.coerce.number().int().min(1).max(500).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 })
 
