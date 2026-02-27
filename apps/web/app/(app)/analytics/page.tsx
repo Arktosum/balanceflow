@@ -1181,15 +1181,34 @@ export default function AnalyticsPage() {
       }
       const qs = params.toString();
 
-      // Transactions: pull period-aware, higher limit so stats are accurate
+      // Derive the actual from/to for the transactions fetch so stats
+      // are scoped to the selected period, not just the last N records
+      const now = new Date();
+      let txFrom: Date;
+      if (period === "custom" && from) {
+        txFrom = new Date(from);
+      } else if (period === "week") {
+        txFrom = new Date(now);
+        txFrom.setDate(now.getDate() - 7);
+      } else if (period === "month") {
+        txFrom = new Date(now);
+        txFrom.setDate(1);
+        txFrom.setHours(0, 0, 0, 0);
+      } else if (period === "year") {
+        txFrom = new Date(now);
+        txFrom.setMonth(0, 1);
+        txFrom.setHours(0, 0, 0, 0);
+      } else {
+        txFrom = new Date(0); // all time
+      }
+      const txTo = period === "custom" && to ? new Date(to) : now;
+
       const txParams = new URLSearchParams({
         status: "completed",
         limit: "500",
       });
-      if (period === "custom" && from && to) {
-        txParams.set("from", new Date(from).toISOString());
-        txParams.set("to", new Date(to).toISOString());
-      }
+      txParams.set("from", txFrom.toISOString());
+      txParams.set("to", txTo.toISOString());
 
       const [summaryRes, categoryRes, trendRes, merchantRes, txRes, itemsRes] =
         await Promise.all([
