@@ -1,0 +1,44 @@
+name: balanceflow
+description: Intuitive Financial Harmony
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.11.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # HTTP
+  dio: ^5.7.0
+
+  # Local database (offline-first)
+  drift: ^2.22.0
+  drift_flutter: ^0.2.4
+  sqlite3_flutter_libs: ^0.5.0
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Secure token storage
+  flutter_secure_storage: ^9.2.2
+
+  # Connectivity
+  connectivity_plus: ^6.1.1
+
+  # Utils
+  uuid: ^4.5.1
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  drift_dev: ^2.22.0
+  build_runner: ^2.4.13
+
+flutter:
+  uses-material-design: true
