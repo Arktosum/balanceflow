@@ -39,18 +39,15 @@ class AuthNotifier extends Notifier<AuthState> {
       state = const AuthState(isLoading: false);
       return;
     }
-    final valid = await _api.validateToken(token);
-    state = AuthState(isLoading: false, isAuthenticated: valid);
+    final error = await _api.validateToken(token);
+    state = AuthState(isLoading: false, isAuthenticated: error == null);
   }
 
   Future<void> login(String token) async {
     state = state.copyWith(isLoading: true, error: null);
-    final valid = await _api.validateToken(token.trim());
-    if (!valid) {
-      state = const AuthState(
-        isLoading: false,
-        error: 'Invalid password — check your APP_SECRET',
-      );
+    final error = await _api.validateToken(token.trim());
+    if (error != null) {
+      state = AuthState(isLoading: false, error: error);
       return;
     }
     await _api.saveToken(token.trim());

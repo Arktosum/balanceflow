@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme.dart';
 import 'core/providers/auth_provider.dart';
 import 'features/auth/login_screen.dart';
+import 'features/dashboard/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +29,7 @@ class _App extends ConsumerWidget {
       home: auth.isLoading
           ? const _Splash()
           : auth.isAuthenticated
-              ? const _DashboardPlaceholder()
+              ? const DashboardScreen()
               : const LoginScreen(),
     );
   }
@@ -44,14 +45,14 @@ class _Splash extends StatelessWidget {
       body: Center(
         child: CustomPaint(
           size: const Size(44, 28),
-          painter: _SplashPulsePainter(),
+          painter: _PulsePainter(),
         ),
       ),
     );
   }
 }
 
-class _SplashPulsePainter extends CustomPainter {
+class _PulsePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -82,21 +83,4 @@ class _SplashPulsePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _DashboardPlaceholder extends StatelessWidget {
-  const _DashboardPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: const Center(
-        child: Text(
-          'Dashboard coming soon',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-      ),
-    );
-  }
 }
