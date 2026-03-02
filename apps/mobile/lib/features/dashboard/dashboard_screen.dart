@@ -4,7 +4,7 @@ import '../../core/theme.dart';
 import '../../core/network/api_client.dart';
 
 // ---------------------------------------------------------------------------
-// Data models
+// Models
 // ---------------------------------------------------------------------------
 
 class _Account {
@@ -23,12 +23,12 @@ class _Account {
   });
 
   factory _Account.fromJson(Map<String, dynamic> j) => _Account(
-        id: j['id'] as String,
-        name: j['name'] as String,
-        type: j['type'] as String,
-        balance: _toDouble(j['balance']),
-        color: j['color'] as String?,
-      );
+    id: j['id'] as String,
+    name: j['name'] as String,
+    type: j['type'] as String,
+    balance: _toDouble(j['balance']),
+    color: j['color'] as String?,
+  );
 }
 
 class _Summary {
@@ -45,11 +45,11 @@ class _Summary {
   });
 
   factory _Summary.fromJson(Map<String, dynamic> j) => _Summary(
-        totalBalance: _toDouble(j['total_balance']),
-        totalIncome: _toDouble(j['total_income']),
-        totalExpenses: _toDouble(j['total_expenses']),
-        netChange: _toDouble(j['net_change']),
-      );
+    totalBalance: _toDouble(j['total_balance']),
+    totalIncome: _toDouble(j['total_income']),
+    totalExpenses: _toDouble(j['total_expenses']),
+    netChange: _toDouble(j['net_change']),
+  );
 }
 
 double _toDouble(dynamic v) {
@@ -60,8 +60,43 @@ double _toDouble(dynamic v) {
 }
 
 // ---------------------------------------------------------------------------
+// Currency — Indian format, always explicit, 2 decimal places
+// ---------------------------------------------------------------------------
+
+String _formatCurrency(double v) {
+  final isNegative = v < 0;
+  final abs = v.abs();
+  final parts = abs.toStringAsFixed(2).split('.');
+  final intPart = parts[0];
+  final decPart = parts[1];
+
+  // Indian grouping: last 3 digits, then groups of 2
+  String formatted;
+  if (intPart.length <= 3) {
+    formatted = intPart;
+  } else {
+    final last3 = intPart.substring(intPart.length - 3);
+    final rest = intPart.substring(0, intPart.length - 3);
+    final buf = StringBuffer();
+    for (var i = 0; i < rest.length; i++) {
+      if (i > 0 && (rest.length - i) % 2 == 0) buf.write(',');
+      buf.write(rest[i]);
+    }
+    formatted = '${buf.toString()},$last3';
+  }
+
+  return '${isNegative ? '-' : ''}₹$formatted.$decPart';
+}
+
+// ---------------------------------------------------------------------------
 // Quotes
 // ---------------------------------------------------------------------------
+
+class _Quote {
+  final String text;
+  final String author;
+  const _Quote(this.text, this.author);
+}
 
 const _quotes = [
   _Quote(
@@ -76,10 +111,7 @@ const _quotes = [
     'Do not save what is left after spending, but spend what is left after saving.',
     'Warren Buffett',
   ),
-  _Quote(
-    'The secret to getting ahead is getting started.',
-    'Mark Twain',
-  ),
+  _Quote('The secret to getting ahead is getting started.', 'Mark Twain'),
   _Quote(
     "It's not your salary that makes you rich, it's your spending habits.",
     'Charles Jaffe',
@@ -94,17 +126,9 @@ const _quotes = [
   ),
 ];
 
-class _Quote {
-  final String text;
-  final String author;
-  const _Quote(this.text, this.author);
-}
-
-_Quote get _dailyQuote {
-  final index =
-      (DateTime.now().millisecondsSinceEpoch ~/ 86400000) % _quotes.length;
-  return _quotes[index];
-}
+_Quote get _dailyQuote =>
+    _quotes[(DateTime.now().millisecondsSinceEpoch ~/ 86400000) %
+        _quotes.length];
 
 // ---------------------------------------------------------------------------
 // Period
@@ -112,22 +136,21 @@ _Quote get _dailyQuote {
 
 enum _Period { day, week, month, year, custom }
 
-extension _PeriodLabel on _Period {
+extension _PeriodX on _Period {
   String get label => switch (this) {
-        _Period.day => 'Day',
-        _Period.week => 'Week',
-        _Period.month => 'Month',
-        _Period.year => 'Year',
-        _Period.custom => 'Custom',
-      };
-
+    _Period.day => 'Day',
+    _Period.week => 'Week',
+    _Period.month => 'Month',
+    _Period.year => 'Year',
+    _Period.custom => 'Custom',
+  };
   String get apiValue => switch (this) {
-        _Period.day => 'day',
-        _Period.week => 'week',
-        _Period.month => 'month',
-        _Period.year => 'year',
-        _Period.custom => 'custom',
-      };
+    _Period.day => 'day',
+    _Period.week => 'week',
+    _Period.month => 'month',
+    _Period.year => 'year',
+    _Period.custom => 'custom',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +167,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   _Period _period = _Period.month;
   DateTimeRange? _customRange;
-
   List<_Account> _accounts = [];
   _Summary? _summary;
   bool _loading = true;
@@ -175,29 +197,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _accounts = (results[0] as List<dynamic>)
             .map((e) => _Account.fromJson(e as Map<String, dynamic>))
             .toList();
-        _summary =
-            _Summary.fromJson(results[1] as Map<String, dynamic>);
+        _summary = _Summary.fromJson(results[1] as Map<String, dynamic>);
         _loading = false;
       });
     } catch (e) {
       setState(() {
-        _error = 'Could not load data';
+        _error = e.toString();
         _loading = false;
       });
     }
   }
 
   Future<void> _fetchSummaryOnly() async {
-    setState(() {
-      _summary = null;
-    });
+    setState(() => _summary = null);
     try {
-      final api = ref.read(apiClientProvider);
-      final result = await api.fetchAnalyticsSummary(
-        period: _period.apiValue,
-        from: _customRange?.start,
-        to: _customRange?.end,
-      );
+      final result = await ref
+          .read(apiClientProvider)
+          .fetchAnalyticsSummary(
+            period: _period.apiValue,
+            from: _customRange?.start,
+            to: _customRange?.end,
+          );
       setState(() => _summary = _Summary.fromJson(result));
     } catch (_) {}
   }
@@ -235,20 +255,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   String get _greeting {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
     return 'Good evening';
   }
 
   String get _periodLabel {
     if (_period == _Period.custom && _customRange != null) {
+      const m = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       final s = _customRange!.start;
       final e = _customRange!.end;
-      const m = [
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec'
-      ];
       return '${s.day} ${m[s.month - 1]} – ${e.day} ${m[e.month - 1]}';
     }
     return _period.label;
@@ -257,7 +287,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         color: AppColors.primary,
         backgroundColor: AppColors.surfaceHigh,
@@ -270,31 +300,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     const SizedBox(height: 24),
-                    _Header(
-                      greeting: _greeting,
-                      period: _period,
-                      periodLabel: _periodLabel,
-                      onPeriodTap: _onPeriodTap,
-                    ),
+                    _buildHeader(),
                     const SizedBox(height: 20),
-                    _QuoteCard(quote: _dailyQuote),
+                    _buildQuoteCard(),
                     const SizedBox(height: 20),
-                    _HeroBalanceCard(
-                      balance: _summary?.totalBalance,
-                      loading: _loading,
-                    ),
+                    _buildHeroCard(),
                     const SizedBox(height: 16),
-                    _StatRow(
-                      summary: _summary,
-                      loading: _loading,
-                      periodLabel: _periodLabel,
-                    ),
-                    const SizedBox(height: 24),
-                    _AccountsSection(
-                      accounts: _accounts,
-                      loading: _loading,
-                    ),
-                    const SizedBox(height: 32),
+                    _buildStatRow(),
+                    const SizedBox(height: 28),
+                    _buildAccountsSection(),
+                    const SizedBox(height: 40),
                   ]),
                 ),
               ),
@@ -304,73 +319,90 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Header
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Header
+  // ---------------------------------------------------------------------------
 
-class _Header extends StatelessWidget {
-  final String greeting;
-  final _Period period;
-  final String periodLabel;
-  final void Function(_Period) onPeriodTap;
-
-  const _Header({
-    required this.greeting,
-    required this.period,
-    required this.periodLabel,
-    required this.onPeriodTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          children: [
+            // Logo mark
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Center(
+                child: CustomPaint(
+                  size: const Size(18, 12),
+                  painter: _PulsePainter(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'BalanceFlow',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         Text(
-          '$greeting, Arktos 👋',
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
+          '$_greeting, Arktos 👋',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         const SizedBox(height: 4),
         const Text(
           'Welcome back!',
           style: TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 24,
+            fontSize: 26,
             fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 16),
+        // Period selector
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             children: _Period.values.map((p) {
-              final selected = period == p;
-              final label = p == _Period.custom && period == _Period.custom
-                  ? periodLabel
+              final selected = _period == p;
+              final label = (p == _Period.custom && selected)
+                  ? _periodLabel
                   : p.label;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: GestureDetector(
-                  onTap: () => onPeriodTap(p),
+                  onTap: () => _onPeriodTap(p),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 7),
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
                     decoration: BoxDecoration(
                       color: selected
                           ? AppColors.primary
                           : AppColors.surfaceHigh,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.border,
+                        color: selected ? AppColors.primary : AppColors.border,
                       ),
                     ),
                     child: Text(
@@ -392,171 +424,251 @@ class _Header extends StatelessWidget {
       ],
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Quote card
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Quote card — fixed: separate Stack-based left accent instead of Border()
+  // ---------------------------------------------------------------------------
 
-class _QuoteCard extends StatelessWidget {
-  final _Quote quote;
-  const _QuoteCard({required this.quote});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border(
-          left: BorderSide(color: AppColors.primary, width: 3),
-          top: BorderSide(color: AppColors.border, width: 1),
-          right: BorderSide(color: AppColors.border, width: 1),
-          bottom: BorderSide(color: AppColors.border, width: 1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildQuoteCard() {
+    final quote = _dailyQuote;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
         children: [
-          Text(
-            '"${quote.text}"',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-              fontStyle: FontStyle.italic,
-              height: 1.5,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.format_quote_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  quote.text,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '— ${quote.author}',
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '— ${quote.author}',
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
-            ),
+          // Left accent bar
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(width: 3, color: AppColors.primary),
           ),
         ],
       ),
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Hero balance card
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Hero balance card
+  // ---------------------------------------------------------------------------
 
-class _HeroBalanceCard extends StatelessWidget {
-  final double? balance;
-  final bool loading;
-  const _HeroBalanceCard({required this.balance, required this.loading});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHeroCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A1040), Color(0xFF0D1829)],
+        gradient: LinearGradient(
+          colors: [const Color(0xFF1E1060), const Color(0xFF0D1829)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.15),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          const Text(
-            'Total Balance',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.account_balance_wallet_outlined,
+                color: AppColors.primary.withOpacity(0.7),
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Total Balance',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          loading
-              ? _Shimmer(width: 200, height: 52)
+          _loading
+              ? _Shimmer(width: 220, height: 56)
               : Text(
-                  _formatCurrency(balance ?? 0),
+                  _formatCurrency(_summary?.totalBalance ?? 0),
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 48,
+                    fontSize: 40,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -1.5,
+                    letterSpacing: -1,
                   ),
                 ),
           const SizedBox(height: 8),
-          const Text(
-            'across all accounts',
-            style: TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
-            ),
+          Text(
+            'across ${_accounts.length} account${_accounts.length != 1 ? 's' : ''}',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ],
       ),
     );
   }
-}
 
-// ---------------------------------------------------------------------------
-// Stat row
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Stat row
+  // ---------------------------------------------------------------------------
 
-class _StatRow extends StatelessWidget {
-  final _Summary? summary;
-  final bool loading;
-  final String periodLabel;
-
-  const _StatRow({
-    required this.summary,
-    required this.loading,
-    required this.periodLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildStatRow() {
+    final net = _summary?.netChange ?? 0;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _StatChip(
+          _StatCard(
             label: 'Income',
-            value: summary?.totalIncome,
+            value: _summary?.totalIncome,
             color: AppColors.income,
             icon: Icons.trending_up_rounded,
-            period: periodLabel,
-            loading: loading,
+            period: _periodLabel,
+            loading: _loading,
           ),
           const SizedBox(width: 10),
-          _StatChip(
+          _StatCard(
             label: 'Expenses',
-            value: summary?.totalExpenses,
+            value: _summary?.totalExpenses,
             color: AppColors.expense,
             icon: Icons.trending_down_rounded,
-            period: periodLabel,
-            loading: loading,
+            period: _periodLabel,
+            loading: _loading,
           ),
           const SizedBox(width: 10),
-          _StatChip(
+          _StatCard(
             label: 'Net Change',
-            value: summary?.netChange,
-            color: (summary?.netChange ?? 0) >= 0
-                ? AppColors.income
-                : AppColors.expense,
+            value: net,
+            color: net >= 0 ? AppColors.income : AppColors.expense,
             icon: Icons.swap_horiz_rounded,
-            period: periodLabel,
-            loading: loading,
+            period: _periodLabel,
+            loading: _loading,
             showSign: true,
           ),
         ],
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Accounts section
+  // ---------------------------------------------------------------------------
+
+  Widget _buildAccountsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.credit_card_rounded,
+              color: AppColors.textSecondary,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Accounts',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _loading
+            ? SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: List.generate(
+                    3,
+                    (_) => Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _Shimmer(width: 160, height: 120),
+                    ),
+                  ),
+                ),
+              )
+            : _accounts.isEmpty
+            ? Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Center(
+                  child: Text(
+                    'No accounts yet',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                  ),
+                ),
+              )
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _accounts
+                      .map(
+                        (a) => Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: _AccountCard(account: a),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+      ],
+    );
+  }
 }
 
-class _StatChip extends StatelessWidget {
+// ---------------------------------------------------------------------------
+// Stat card widget
+// ---------------------------------------------------------------------------
+
+class _StatCard extends StatelessWidget {
   final String label;
   final double? value;
   final Color color;
@@ -565,7 +677,7 @@ class _StatChip extends StatelessWidget {
   final bool loading;
   final bool showSign;
 
-  const _StatChip({
+  const _StatCard({
     required this.label,
     required this.value,
     required this.color,
@@ -577,12 +689,10 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayValue = value ?? 0;
-    final prefix =
-        showSign && displayValue >= 0 ? '+' : '';
-
+    final v = value ?? 0;
+    final prefix = showSign && v >= 0 ? '+' : '';
     return Container(
-      width: 150,
+      width: 160,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -600,37 +710,37 @@ class _StatChip extends StatelessWidget {
                   color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 16, color: color),
+                child: Icon(icon, size: 15, color: color),
               ),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           loading
-              ? _Shimmer(width: 80, height: 28)
+              ? _Shimmer(width: 100, height: 22)
               : Text(
-                  '$prefix${_formatCurrency(displayValue)}',
+                  '$prefix${_formatCurrency(v)}',
                   style: TextStyle(
                     color: color,
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.3,
                   ),
                 ),
           const SizedBox(height: 4),
           Text(
             period,
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 11,
-            ),
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
           ),
         ],
       ),
@@ -639,69 +749,14 @@ class _StatChip extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Accounts section
+// Account card widget
 // ---------------------------------------------------------------------------
-
-class _AccountsSection extends StatelessWidget {
-  final List<_Account> accounts;
-  final bool loading;
-
-  const _AccountsSection({
-    required this.accounts,
-    required this.loading,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Accounts',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
-        const SizedBox(height: 14),
-        loading
-            ? SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: List.generate(
-                    3,
-                    (_) => Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _Shimmer(width: 160, height: 110),
-                    ),
-                  ),
-                ),
-              )
-            : accounts.isEmpty
-                ? _EmptyAccounts()
-                : SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: accounts.map((a) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: _AccountCard(account: a),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-      ],
-    );
-  }
-}
 
 class _AccountCard extends StatelessWidget {
   final _Account account;
   const _AccountCard({required this.account});
 
-  Color get _color {
+  Color get _accentColor {
     final hex = account.color;
     if (hex == null) return AppColors.primary;
     final cleaned = hex.replaceFirst('#', '');
@@ -711,25 +766,34 @@ class _AccountCard extends StatelessWidget {
     return AppColors.primary;
   }
 
+  IconData get _typeIcon => switch (account.type.toLowerCase()) {
+    'bank' => Icons.account_balance_rounded,
+    'wallet' => Icons.account_balance_wallet_rounded,
+    'cash' => Icons.payments_rounded,
+    _ => Icons.credit_card_rounded,
+  };
+
   @override
   Widget build(BuildContext context) {
-    final color = _color;
+    final color = _accentColor;
     return Container(
-      width: 160,
+      width: 168,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top accent strip
           Container(
             height: 4,
             decoration: BoxDecoration(
               color: color,
               borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16)),
+                top: Radius.circular(16),
+              ),
             ),
           ),
           Padding(
@@ -737,16 +801,22 @@ class _AccountCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  account.type.toUpperCase(),
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
+                Row(
+                  children: [
+                    Icon(_typeIcon, size: 14, color: color),
+                    const SizedBox(width: 6),
+                    Text(
+                      account.type.toUpperCase(),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 10),
                 Text(
                   account.name,
                   style: const TextStyle(
@@ -764,35 +834,15 @@ class _AccountCard extends StatelessWidget {
                     color: account.balance < 0
                         ? AppColors.expense
                         : AppColors.textPrimary,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmptyAccounts extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Center(
-        child: Text(
-          'No accounts yet',
-          style: TextStyle(color: AppColors.textMuted, fontSize: 14),
-        ),
       ),
     );
   }
@@ -808,33 +858,49 @@ class _Shimmer extends StatelessWidget {
   const _Shimmer({required this.width, required this.height});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceHigh,
-        borderRadius: BorderRadius.circular(10),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: AppColors.surfaceHigh,
+      borderRadius: BorderRadius.circular(10),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Pulse logo painter
 // ---------------------------------------------------------------------------
 
-String _formatCurrency(double v) {
-  final abs = v.abs();
-  final prefix = v < 0 ? '-' : '';
-  if (abs >= 10000000) {
-    return '${prefix}₹${(abs / 10000000).toStringAsFixed(2)}Cr';
+class _PulsePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.primary
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    final w = size.width;
+    final h = size.height;
+    final mid = h / 2;
+
+    final path = Path()
+      ..moveTo(0, mid)
+      ..lineTo(w * 0.15, mid)
+      ..lineTo(w * 0.15, mid - h * 0.4)
+      ..lineTo(w * 0.38, mid - h * 0.4)
+      ..lineTo(w * 0.38, mid)
+      ..lineTo(w * 0.50, mid)
+      ..lineTo(w * 0.50, mid + h * 0.4)
+      ..lineTo(w * 0.73, mid + h * 0.4)
+      ..lineTo(w * 0.73, mid)
+      ..lineTo(w, mid);
+
+    canvas.drawPath(path, paint);
   }
-  if (abs >= 100000) {
-    return '${prefix}₹${(abs / 100000).toStringAsFixed(2)}L';
-  }
-  if (abs >= 1000) {
-    return '${prefix}₹${(abs / 1000).toStringAsFixed(1)}k';
-  }
-  return '${prefix}₹${abs.toStringAsFixed(2)}';
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

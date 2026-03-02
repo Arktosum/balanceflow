@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme.dart';
 import 'core/providers/auth_provider.dart';
 import 'features/auth/login_screen.dart';
-import 'features/dashboard/dashboard_screen.dart';
+import 'shared/widgets/app_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +29,7 @@ class _App extends ConsumerWidget {
       home: auth.isLoading
           ? const _Splash()
           : auth.isAuthenticated
-              ? const DashboardScreen()
+              ? const AppShell()
               : const LoginScreen(),
     );
   }

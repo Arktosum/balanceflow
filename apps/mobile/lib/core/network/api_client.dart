@@ -18,7 +18,6 @@ class ApiClient {
         headers: {'Content-Type': 'application/json'},
       ),
     );
-
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -30,7 +29,8 @@ class ApiClient {
     );
   }
 
-  /// Returns null on success, or an error message string on failure.
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
   Future<String?> validateToken(String token) async {
     try {
       final res = await _dio.get(
@@ -61,15 +61,82 @@ class ApiClient {
 
   Future<void> saveToken(String token) =>
       _storage.write(key: AppConstants.tokenKey, value: token);
-
   Future<String?> getToken() => _storage.read(key: AppConstants.tokenKey);
-
   Future<void> clearToken() => _storage.delete(key: AppConstants.tokenKey);
 
-  Future<List<dynamic>> fetchAccounts() async {
-    final res = await _dio.get('/api/accounts');
-    return res.data as List<dynamic>;
+  // ── Accounts ──────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> fetchAccounts() async =>
+      (await _dio.get('/api/accounts')).data as List<dynamic>;
+
+  // ── Categories ────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> fetchCategories() async =>
+      (await _dio.get('/api/categories')).data as List<dynamic>;
+
+  // ── Merchants ─────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> fetchMerchants() async =>
+      (await _dio.get('/api/merchants')).data as List<dynamic>;
+
+  Future<Map<String, dynamic>> createMerchant(String name) async =>
+      (await _dio.post('/api/merchants', data: {'name': name})).data
+          as Map<String, dynamic>;
+
+  // ── Transactions ──────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> fetchTransactions({
+    String? type,
+    String? status,
+    String? accountId,
+    String? merchantId,
+    int limit = 100,
+  }) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (type != null) params['type'] = type;
+    if (status != null) params['status'] = status;
+    if (accountId != null) params['account_id'] = accountId;
+    if (merchantId != null) params['merchant_id'] = merchantId;
+    return (await _dio.get('/api/transactions', queryParameters: params)).data
+        as List<dynamic>;
   }
+
+  Future<Map<String, dynamic>> updateTransaction(
+    String id,
+    Map<String, dynamic> data,
+  ) async =>
+      (await _dio.patch('/api/transactions/$id', data: data)).data
+          as Map<String, dynamic>;
+
+  Future<void> deleteTransaction(String id) =>
+      _dio.delete('/api/transactions/$id');
+
+  // ── Transaction items ─────────────────────────────────────────────────────
+
+  Future<List<dynamic>> fetchTransactionItems(String txId) async =>
+      (await _dio.get('/api/transactions/$txId/items')).data as List<dynamic>;
+
+  Future<void> addTransactionItem(String txId, Map<String, dynamic> data) =>
+      _dio.post('/api/transactions/$txId/items', data: data);
+
+  Future<void> updateTransactionItem(
+    String itemId,
+    Map<String, dynamic> data,
+  ) => _dio.patch('/api/transactions/items/$itemId', data: data);
+
+  Future<void> deleteTransactionItem(String itemId) =>
+      _dio.delete('/api/transactions/items/$itemId');
+
+  // ── Items ─────────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> fetchItems() async =>
+      (await _dio.get('/api/items')).data as List<dynamic>;
+
+  Future<Map<String, dynamic>> createItem(String name) async =>
+      (await _dio.post('/api/items', data: {'name': name})).data
+          as Map<String, dynamic>;
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> fetchAnalyticsSummary({
     required String period,
@@ -81,11 +148,11 @@ class ApiClient {
       params['from'] = from.toIso8601String();
       params['to'] = to.toIso8601String();
     }
-    final res = await _dio.get(
-      '/api/analytics/summary',
-      queryParameters: params,
-    );
-    return res.data as Map<String, dynamic>;
+    return (await _dio.get(
+          '/api/analytics/summary',
+          queryParameters: params,
+        )).data
+        as Map<String, dynamic>;
   }
 
   Dio get dio => _dio;
