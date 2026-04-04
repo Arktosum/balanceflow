@@ -1,56 +1,48 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
-import '../widgets/animated_background.dart';
+import '../../features/add_transaction/add_transaction_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/transactions/transactions_screen.dart';
-import '../../features/add_transaction/add_transaction_screen.dart';
+import '../../features/accounts/accounts_screen.dart';
+import '../../features/analytics/analytics_screen.dart';
+import 'animated_background.dart';
 
-class AppShell extends StatefulWidget {
+final _tabProvider = StateProvider<int>((ref) => 0);
+
+class AppShell extends ConsumerWidget {
   const AppShell({super.key});
-
-  @override
-  State<AppShell> createState() => _AppShellState();
-}
-
-class _AppShellState extends State<AppShell> {
-  int _currentIndex = 0;
 
   static const _screens = [
     DashboardScreen(),
     TransactionsScreen(),
-    AnalyticsScreen(),
     AccountsScreen(),
+    AnalyticsScreen(),
   ];
 
-  void _onTabTap(int index) => setState(() => _currentIndex = index);
-
-  void _onAddTap() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const AddTransactionScreen(),
-      ),
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tab = ref.watch(_tabProvider);
+    final bottom = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1117),
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           const AnimatedBackground(),
-          IndexedStack(index: _currentIndex, children: _screens),
+          IndexedStack(index: tab, children: _screens),
           Positioned(
+            bottom: bottom + 12,
             left: 20,
             right: 20,
-            bottom: bottomPadding + 16,
-            child: _FloatingNavBar(
-              currentIndex: _currentIndex,
-              onTabTap: _onTabTap,
-              onAddTap: _onAddTap,
+            child: _NavBar(
+              tab: tab,
+              onTabChanged: (i) => ref.read(_tabProvider.notifier).state = i,
+              onAdd: () => Navigator.of(context).push(MaterialPageRoute(
+                fullscreenDialog: true,
+                builder: (_) => const AddTransactionScreen(),
+              )),
             ),
           ),
         ],
@@ -59,73 +51,78 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Floating nav bar
-// ---------------------------------------------------------------------------
+class _NavBar extends StatelessWidget {
+  final int tab;
+  final void Function(int) onTabChanged;
+  final VoidCallback onAdd;
 
-class _FloatingNavBar extends StatelessWidget {
-  final int currentIndex;
-  final void Function(int) onTabTap;
-  final VoidCallback onAddTap;
-
-  const _FloatingNavBar({
-    required this.currentIndex,
-    required this.onTabTap,
-    required this.onAddTap,
+  const _NavBar({
+    required this.tab,
+    required this.onTabChanged,
+    required this.onAdd,
   });
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(28),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           height: 64,
           decoration: BoxDecoration(
-            color: AppColors.surface.withOpacity(0.85),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            color: AppColors.surfaceHigh.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Home',
-                selected: currentIndex == 0,
-                onTap: () => onTabTap(0),
+                  icon: Icons.home_rounded,
+                  label: 'Home',
+                  selected: tab == 0,
+                  onTap: () => onTabChanged(0)),
+              _NavItem(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Transactions',
+                  selected: tab == 1,
+                  onTap: () => onTabChanged(1)),
+              // Centre add button
+              Expanded(
+                child: GestureDetector(
+                  onTap: onAdd,
+                  child: Container(
+                    margin: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFF9C8FFF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.45),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add_rounded,
+                        color: Colors.white, size: 22),
+                  ),
+                ),
               ),
               _NavItem(
-                icon: Icons.receipt_long_outlined,
-                activeIcon: Icons.receipt_long_rounded,
-                label: 'Transactions',
-                selected: currentIndex == 1,
-                onTap: () => onTabTap(1),
-              ),
-              _AddButton(onTap: onAddTap),
+                  icon: Icons.account_balance_rounded,
+                  label: 'Accounts',
+                  selected: tab == 2,
+                  onTap: () => onTabChanged(2)),
               _NavItem(
-                icon: Icons.bar_chart_outlined,
-                activeIcon: Icons.bar_chart_rounded,
-                label: 'Analytics',
-                selected: currentIndex == 2,
-                onTap: () => onTabTap(2),
-              ),
-              _NavItem(
-                icon: Icons.account_balance_outlined,
-                activeIcon: Icons.account_balance_rounded,
-                label: 'Accounts',
-                selected: currentIndex == 3,
-                onTap: () => onTabTap(3),
-              ),
+                  icon: Icons.bar_chart_rounded,
+                  label: 'Analytics',
+                  selected: tab == 3,
+                  onTap: () => onTabChanged(3)),
             ],
           ),
         ),
@@ -134,20 +131,14 @@ class _FloatingNavBar extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Nav item
-// ---------------------------------------------------------------------------
-
 class _NavItem extends StatelessWidget {
   final IconData icon;
-  final IconData activeIcon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
-    required this.activeIcon,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -155,122 +146,36 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withOpacity(0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              selected ? activeIcon : icon,
-              size: 22,
-              color: selected ? AppColors.primary : AppColors.textMuted,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.primary.withOpacity(0.15)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon,
+                  size: 20,
+                  color: selected ? AppColors.primary : AppColors.textMuted),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                color: selected ? AppColors.primary : AppColors.textMuted,
                 fontSize: 10,
+                color: selected ? AppColors.primary : AppColors.textMuted,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Raised add button
-// ---------------------------------------------------------------------------
-
-class _AddButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _AddButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.primary, AppColors.primaryDark],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.5),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-      ),
-    );
-  }
-}
-
-class AnalyticsScreen extends StatelessWidget {
-  const AnalyticsScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-    backgroundColor: Colors.transparent,
-    body: Center(
-      child: Text(
-        'Analytics — coming soon',
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
-      ),
-    ),
-  );
-}
-
-class AccountsScreen extends StatelessWidget {
-  const AccountsScreen({super.key});
-  @override
-  Widget build(BuildContext context) => const Scaffold(
-    backgroundColor: Colors.transparent,
-    body: Center(
-      child: Text(
-        'Accounts — coming soon',
-        style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
-      ),
-    ),
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Placeholders — no separate files needed
-// ---------------------------------------------------------------------------
-
-class _Placeholder extends StatelessWidget {
-  final String name;
-  const _Placeholder(this.name);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Center(
-        child: Text(
-          '$name — coming soon',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
         ),
       ),
     );

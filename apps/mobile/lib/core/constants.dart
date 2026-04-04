@@ -3,6 +3,5 @@ class AppConstants {
     'API_BASE_URL',
     defaultValue: 'https://balanceflow-api-65pq.onrender.com',
   );
-  static const tokenKey = 'app_token';
-  static const maxSyncRetries = 3;
+  static const tokenKey = 'bf_token';
 }

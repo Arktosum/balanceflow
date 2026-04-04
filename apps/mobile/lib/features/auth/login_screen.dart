@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme.dart';
-import '../../core/providers/auth_provider.dart';
+import '../../../../../core/theme.dart';
+import '../../../../../core/providers/auth_provider.dart';
+import '../../../../../shared/widgets/animated_background.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -20,70 +21,117 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    final token = _ctrl.text.trim();
-    if (token.isEmpty) return;
-    ref.read(authProvider.notifier).login(token);
+  Future<void> _login() async {
+    if (_ctrl.text.trim().isEmpty) return;
+    await ref.read(authProvider.notifier).login(_ctrl.text);
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+    final bottom = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+      resizeToAvoidBottomInset: true,
+      body: Stack(
+        children: [
+          const AnimatedBackground(),
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(28, 0, 28, bottom + 28),
+              child: Column(
+                children: [
+                  const Spacer(),
+                  _buildLogo(),
+                  const SizedBox(height: 48),
+                  _buildForm(auth),
+                  const Spacer(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogo() {
+    return Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, Color(0xFF00D2FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.4),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.account_balance_wallet_rounded,
+              color: Colors.white, size: 36),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'BalanceFlow',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Your personal finance tracker',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForm(AuthState auth) {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+          ),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 72),
-              Center(child: _LogoBadge()),
-              const SizedBox(height: 32),
-              const Center(
-                child: Text(
-                  'BalanceFlow',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Center(
-                child: Text(
-                  'Intuitive Financial Harmony',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 56),
               const Text(
-                'Server Password',
+                'Enter your password',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               TextField(
                 controller: _ctrl,
                 obscureText: _obscure,
-                autofocus: true,
-                onSubmitted: (_) => _submit(),
+                onSubmitted: (_) => _login(),
                 style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15,
-                ),
+                    color: AppColors.textPrimary, fontSize: 15),
                 decoration: InputDecoration(
-                  hintText: 'Enter your APP_SECRET',
+                  hintText: 'App password',
                   suffixIcon: IconButton(
+                    onPressed: () =>
+                        setState(() => _obscure = !_obscure),
                     icon: Icon(
                       _obscure
                           ? Icons.visibility_outlined
@@ -91,159 +139,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       color: AppColors.textMuted,
                       size: 20,
                     ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                 ),
               ),
               if (auth.error != null) ...[
                 const SizedBox(height: 12),
-                _ErrorBanner(message: auth.error!),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.expense.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.expense.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    auth.error!,
+                    style: const TextStyle(
+                        color: AppColors.expense, fontSize: 13),
+                  ),
+                ),
               ],
-              const SizedBox(height: 24),
-              _GradientButton(loading: auth.isLoading, onTap: _submit),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton(
+                  onPressed: auth.isLoading ? null : _login,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: auth.isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Sign In',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white),
+                        ),
+                ),
+              ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _LogoBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Center(
-        child: CustomPaint(size: const Size(44, 28), painter: _PulsePainter()),
-      ),
-    );
-  }
-}
-
-class _PulsePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.primary
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    final w = size.width;
-    final h = size.height;
-    final mid = h / 2;
-
-    final path = Path();
-    path.moveTo(0, mid);
-    path.lineTo(w * 0.15, mid);
-    path.lineTo(w * 0.15, mid - h * 0.4);
-    path.lineTo(w * 0.38, mid - h * 0.4);
-    path.lineTo(w * 0.38, mid);
-    path.lineTo(w * 0.50, mid);
-    path.lineTo(w * 0.50, mid + h * 0.4);
-    path.lineTo(w * 0.73, mid + h * 0.4);
-    path.lineTo(w * 0.73, mid);
-    path.lineTo(w, mid);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _GradientButton extends StatelessWidget {
-  final bool loading;
-  final VoidCallback onTap;
-
-  const _GradientButton({required this.loading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: loading ? null : onTap,
-      child: Container(
-        height: 54,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppColors.primary, AppColors.primaryDark],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Center(
-          child: loading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text(
-                  'Sign In',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: AppColors.expense.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.expense.withOpacity(0.25)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppColors.expense,
-            size: 16,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: AppColors.expense, fontSize: 13),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
