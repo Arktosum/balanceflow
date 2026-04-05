@@ -2,14 +2,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
-import '../../features/add_transaction/add_transaction_screen.dart';
+import 'animated_background.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/transactions/transactions_screen.dart';
-import '../../features/accounts/accounts_screen.dart';
+import '../../features/add_transaction/add_transaction_screen.dart';
 import '../../features/analytics/analytics_screen.dart';
-import 'animated_background.dart';
+import '../../features/accounts/accounts_screen.dart';
 
-final _tabProvider = StateProvider<int>((ref) => 0);
+final tabProvider = StateProvider<int>((ref) => 0);
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key});
@@ -23,7 +23,7 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tab = ref.watch(_tabProvider);
+    final tab = ref.watch(tabProvider);
     final bottom = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -38,7 +38,7 @@ class AppShell extends ConsumerWidget {
             right: 20,
             child: _NavBar(
               tab: tab,
-              onTabChanged: (i) => ref.read(_tabProvider.notifier).state = i,
+              onTabChanged: (i) => ref.read(tabProvider.notifier).state = i,
               onAdd: () => Navigator.of(context).push(MaterialPageRoute(
                 fullscreenDialog: true,
                 builder: (_) => const AddTransactionScreen(),

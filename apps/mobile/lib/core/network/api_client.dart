@@ -20,7 +20,15 @@ class ApiClient {
       onRequest: (options, handler) async {
         final token = await _storage.read(key: AppConstants.tokenKey);
         if (token != null) options.headers['x-app-token'] = token;
+        // ignore: avoid_print
+        print('[API] ${options.method} ${options.path} body=${options.data}');
         handler.next(options);
+      },
+      onError: (error, handler) {
+        // ignore: avoid_print
+        print(
+            '[API ERROR] ${error.response?.statusCode} ${error.response?.data}');
+        handler.next(error);
       },
     ));
   }
