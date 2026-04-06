@@ -4,6 +4,7 @@ import '../../core/theme.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/models.dart';
 import '../../shared/widgets/period_selector.dart';
+import '../../shared/providers.dart';
 import 'widgets/transaction_card.dart';
 import 'widgets/filter_panel.dart';
 import 'widgets/date_group_header.dart';
@@ -45,7 +46,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchAll();
+    // Check if Accounts screen pre-set a filter for us
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pendingAccount = ref.read(txAccountFilterProvider);
+      if (pendingAccount != null) {
+        setState(() => _filterAccountId = pendingAccount);
+        ref.read(txAccountFilterProvider.notifier).state = null;
+      }
+      _fetchAll();
+    });
   }
 
   @override
