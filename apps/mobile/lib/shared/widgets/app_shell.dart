@@ -69,12 +69,13 @@ class _NavBar extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          height: 64,
+          height: 68,
           decoration: BoxDecoration(
             color: AppColors.surfaceHigh.withOpacity(0.85),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(color: AppColors.border),
           ),
+          clipBehavior: Clip.none,
           child: Row(
             children: [
               _NavItem(
@@ -87,30 +88,30 @@ class _NavBar extends StatelessWidget {
                   label: 'Transactions',
                   selected: tab == 1,
                   onTap: () => onTabChanged(1)),
-              // Centre add button
-              Expanded(
-                child: GestureDetector(
-                  onTap: onAdd,
-                  child: Container(
-                    margin: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, Color(0xFF9C8FFF)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withOpacity(0.45),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+              // Centre add button — larger, raised above nav bar
+              GestureDetector(
+                onTap: onAdd,
+                child: Container(
+                  width: 58,
+                  height: 58,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, Color(0xFF9C8FFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: const Icon(Icons.add_rounded,
-                        color: Colors.white, size: 22),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.5),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
+                  child: const Icon(Icons.add_rounded,
+                      color: Colors.white, size: 28),
                 ),
               ),
               _NavItem(
