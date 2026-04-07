@@ -25,9 +25,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   // Data per tab — loaded lazily
   Map<String, dynamic>? _summary;
   List<Transaction> _transactions = [];
-  Map<String, dynamic>? _categoryData;
-  Map<String, dynamic>? _itemData;
-  Map<String, dynamic>? _merchantData;
+  dynamic _categoryData;
+  dynamic _itemData;
+  dynamic _merchantData;
 
   // Loading flags per tab
   bool _loadingOverview = false;
@@ -80,14 +80,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     if (_loaded.contains(tab)) return;
     final api = ref.read(apiClientProvider);
     final p = _period.apiValue;
+    // For named periods, let backend compute the range — only send from/to for custom
+    final sendFrom = _period == Period.custom ? _from : null;
+    final sendTo = _period == Period.custom ? _to : null;
 
     switch (tab) {
       case 0:
         setState(() => _loadingOverview = true);
         try {
           final results = await Future.wait([
-            api.fetchAnalyticsSummary(period: p, from: _from, to: _to),
-            api.fetchTransactions(from: _from, to: _to, limit: 500),
+            api.fetchAnalyticsSummary(period: p, from: sendFrom, to: sendTo),
+            api.fetchTransactions(from: sendFrom, to: sendTo, limit: 500),
           ]);
           setState(() {
             _summary = results[0] as Map<String, dynamic>;
@@ -100,49 +103,57 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         } catch (_) {
           setState(() => _loadingOverview = false);
         }
-        break;
       case 1:
         setState(() => _loadingCategories = true);
         try {
           final data = await api.fetchAnalyticsByCategory(
-              period: p, from: _from, to: _to);
+              period: p, from: sendFrom, to: sendTo);
+          // ignore: avoid_print
+          print('[Analytics] categories: $data');
           setState(() {
-            _categoryData = data as Map<String, dynamic>?;
+            _categoryData = data;
             _loadingCategories = false;
             _loaded.add(1);
           });
-        } catch (_) {
+        } catch (e) {
+          // ignore: avoid_print
+          print('[Analytics] categories error: $e');
           setState(() => _loadingCategories = false);
         }
-        break;
       case 2:
         setState(() => _loadingItems = true);
         try {
-          final data =
-              await api.fetchAnalyticsByItem(period: p, from: _from, to: _to);
+          final data = await api.fetchAnalyticsByItem(
+              period: p, from: sendFrom, to: sendTo);
+          // ignore: avoid_print
+          print('[Analytics] items: $data');
           setState(() {
-            _itemData = data as Map<String, dynamic>?;
+            _itemData = data;
             _loadingItems = false;
             _loaded.add(2);
           });
-        } catch (_) {
+        } catch (e) {
+          // ignore: avoid_print
+          print('[Analytics] items error: $e');
           setState(() => _loadingItems = false);
         }
-        break;
       case 3:
         setState(() => _loadingMerchants = true);
         try {
           final data = await api.fetchAnalyticsByMerchant(
-              period: p, from: _from, to: _to);
+              period: p, from: sendFrom, to: sendTo);
+          // ignore: avoid_print
+          print('[Analytics] merchants: $data');
           setState(() {
-            _merchantData = data as Map<String, dynamic>?;
+            _merchantData = data;
             _loadingMerchants = false;
             _loaded.add(3);
           });
-        } catch (_) {
+        } catch (e) {
+          // ignore: avoid_print
+          print('[Analytics] merchants error: $e');
           setState(() => _loadingMerchants = false);
         }
-        break;
     }
   }
 
@@ -155,6 +166,30 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     _loaded.clear();
     await _loadTab(_tab);
   }
+
+  // Normalise response — backend may return { categories: [...] } or just [...]
+  Map<String, dynamic> _normaliseCategories(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is List) {
+      return {'categories': raw, 'total': _sumList(raw, 'total')};
+    }
+    return {};
+  }
+
+  Map<String, dynamic> _normaliseMerchants(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is List) return {'merchants': raw};
+    return {};
+  }
+
+  Map<String, dynamic> _normaliseItems(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is List) return {'top_items': raw, 'price_history': {}};
+    return {};
+  }
+
+  double _sumList(List list, String key) =>
+      list.fold(0.0, (s, e) => s + toDouble((e as Map<String, dynamic>)[key]));
 
   @override
   Widget build(BuildContext context) {
@@ -223,15 +258,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           loading: _loadingOverview,
         ),
       1 => CategoriesTab(
-          data: _categoryData,
+          data: _categoryData != null
+              ? _normaliseCategories(_categoryData)
+              : null,
           loading: _loadingCategories,
         ),
       2 => ItemsTab(
-          data: _itemData,
+          data: _itemData != null ? _normaliseItems(_itemData) : null,
           loading: _loadingItems,
         ),
       3 => MerchantsTab(
-          data: _merchantData,
+          data:
+              _merchantData != null ? _normaliseMerchants(_merchantData) : null,
           loading: _loadingMerchants,
         ),
       _ => const SizedBox.shrink(),

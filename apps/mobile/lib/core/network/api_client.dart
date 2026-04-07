@@ -20,14 +20,18 @@ class ApiClient {
       onRequest: (options, handler) async {
         final token = await _storage.read(key: AppConstants.tokenKey);
         if (token != null) options.headers['x-app-token'] = token;
-        // ignore: avoid_print
-        print('[API] ${options.method} ${options.path} body=${options.data}');
         handler.next(options);
       },
       onError: (error, handler) {
         // ignore: avoid_print
         print(
-            '[API ERROR] ${error.response?.statusCode} ${error.response?.data}');
+            '[API ERROR] ${error.requestOptions.method} ${error.requestOptions.path}');
+        // ignore: avoid_print
+        print('[API ERROR] body: ${error.requestOptions.data}');
+        // ignore: avoid_print
+        print('[API ERROR] status: ${error.response?.statusCode}');
+        // ignore: avoid_print
+        print('[API ERROR] response: ${error.response?.data}');
         handler.next(error);
       },
     ));
@@ -35,7 +39,7 @@ class ApiClient {
 
   Dio get dio => _dio;
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────────────────────────
 
   Future<String?> validateToken(String token) async {
     try {
@@ -65,17 +69,17 @@ class ApiClient {
   Future<String?> getToken() => _storage.read(key: AppConstants.tokenKey);
   Future<void> clearToken() => _storage.delete(key: AppConstants.tokenKey);
 
-  // ── Accounts ──────────────────────────────────────────────────────────────
+  // ── Accounts ───────────────────────────────────────────────────────────────
 
   Future<List<dynamic>> fetchAccounts() async =>
       (await _dio.get('/api/accounts')).data as List<dynamic>;
 
-  // ── Categories ────────────────────────────────────────────────────────────
+  // ── Categories ─────────────────────────────────────────────────────────────
 
   Future<List<dynamic>> fetchCategories() async =>
       (await _dio.get('/api/categories')).data as List<dynamic>;
 
-  // ── Merchants ─────────────────────────────────────────────────────────────
+  // ── Merchants ──────────────────────────────────────────────────────────────
 
   Future<List<dynamic>> fetchMerchants() async =>
       (await _dio.get('/api/merchants')).data as List<dynamic>;
@@ -84,7 +88,7 @@ class ApiClient {
       (await _dio.post('/api/merchants', data: {'name': name})).data
           as Map<String, dynamic>;
 
-  // ── Items ─────────────────────────────────────────────────────────────────
+  // ── Items ──────────────────────────────────────────────────────────────────
 
   Future<List<dynamic>> fetchItems() async =>
       (await _dio.get('/api/items')).data as List<dynamic>;
@@ -93,7 +97,7 @@ class ApiClient {
       (await _dio.post('/api/items', data: {'name': name})).data
           as Map<String, dynamic>;
 
-  // ── Transactions ──────────────────────────────────────────────────────────
+  // ── Transactions ───────────────────────────────────────────────────────────
 
   Future<List<dynamic>> fetchTransactions({
     String? type,
@@ -128,7 +132,7 @@ class ApiClient {
   Future<void> deleteTransaction(String id) =>
       _dio.delete('/api/transactions/$id');
 
-  // ── Transaction items ─────────────────────────────────────────────────────
+  // ── Transaction items ──────────────────────────────────────────────────────
 
   Future<List<dynamic>> fetchTransactionItems(String txId) async =>
       (await _dio.get('/api/transactions/$txId/items')).data as List<dynamic>;
@@ -143,7 +147,7 @@ class ApiClient {
   Future<void> deleteTransactionItem(String itemId) =>
       _dio.delete('/api/transaction-items/$itemId');
 
-  // ── Analytics ─────────────────────────────────────────────────────────────
+  // ── Analytics ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> fetchAnalyticsSummary({
     required String period,
@@ -157,7 +161,8 @@ class ApiClient {
         .data as Map<String, dynamic>;
   }
 
-  Future<List<dynamic>> fetchAnalyticsByCategory({
+  // These three return dynamic — backend may return { key: [...] } or [...] directly
+  Future<dynamic> fetchAnalyticsByCategory({
     required String period,
     String? from,
     String? to,
@@ -167,10 +172,10 @@ class ApiClient {
     if (to != null) params['to'] = to;
     return (await _dio.get('/api/analytics/by-category',
             queryParameters: params))
-        .data as List<dynamic>;
+        .data;
   }
 
-  Future<List<dynamic>> fetchAnalyticsByMerchant({
+  Future<dynamic> fetchAnalyticsByMerchant({
     required String period,
     String? from,
     String? to,
@@ -180,10 +185,10 @@ class ApiClient {
     if (to != null) params['to'] = to;
     return (await _dio.get('/api/analytics/by-merchant',
             queryParameters: params))
-        .data as List<dynamic>;
+        .data;
   }
 
-  Future<List<dynamic>> fetchAnalyticsByItem({
+  Future<dynamic> fetchAnalyticsByItem({
     required String period,
     String? from,
     String? to,
@@ -192,6 +197,6 @@ class ApiClient {
     if (from != null) params['from'] = from;
     if (to != null) params['to'] = to;
     return (await _dio.get('/api/analytics/by-item', queryParameters: params))
-        .data as List<dynamic>;
+        .data;
   }
 }
