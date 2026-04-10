@@ -142,10 +142,10 @@ class ApiClient {
 
   Future<void> updateTransactionItem(
           String itemId, Map<String, dynamic> data) =>
-      _dio.patch('/api/transaction-items/$itemId', data: data);
+      _dio.patch('/api/transactions/items/$itemId', data: data);
 
   Future<void> deleteTransactionItem(String itemId) =>
-      _dio.delete('/api/transaction-items/$itemId');
+      _dio.delete('/api/transactions/items/$itemId');
 
   // ── Analytics ──────────────────────────────────────────────────────────────
 

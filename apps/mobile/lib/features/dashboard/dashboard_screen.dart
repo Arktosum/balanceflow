@@ -5,13 +5,16 @@ import '../../core/network/api_client.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../shared/models.dart';
 import '../../shared/widgets/period_selector.dart';
+import '../transactions/transaction_detail_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
 final _accountsProvider = FutureProvider<List<Account>>((ref) async {
   final raw = await ref.read(apiClientProvider).fetchAccounts();
-  return raw.map((e) => Account.fromJson(e as Map<String, dynamic>)).toList();
+  return (raw as List<dynamic>)
+      .map((e) => Account.fromJson(e as Map<String, dynamic>))
+      .toList();
 });
 
 final _dashPeriodProvider = StateProvider<Period>((ref) => Period.month);
@@ -79,9 +82,8 @@ class DashboardScreen extends ConsumerWidget {
                         customRange: customRange,
                         onChanged: (p, range) {
                           ref.read(_dashPeriodProvider.notifier).state = p;
-                          ref
-                              .read(_dashCustomRangeProvider.notifier)
-                              .state = range;
+                          ref.read(_dashCustomRangeProvider.notifier).state =
+                              range;
                         },
                       ),
                       const SizedBox(height: 20),
@@ -202,8 +204,7 @@ class _Header extends ConsumerWidget {
               title: const Text('Sign out',
                   style: TextStyle(color: AppColors.textPrimary)),
               subtitle: const Text('Clear saved password',
-                  style: TextStyle(
-                      color: AppColors.textMuted, fontSize: 12)),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               onTap: () {
                 Navigator.pop(context);
                 ref.read(authProvider.notifier).logout();
@@ -345,8 +346,7 @@ class _BalanceHero extends StatelessWidget {
         final total = list.fold<double>(0, (s, a) => s + a.balance);
         return Container(
           width: double.infinity,
-          padding:
-              const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -357,8 +357,7 @@ class _BalanceHero extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
-            border:
-                Border.all(color: AppColors.primary.withOpacity(0.25)),
+            border: Border.all(color: AppColors.primary.withOpacity(0.25)),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withOpacity(0.12),
@@ -388,8 +387,8 @@ class _BalanceHero extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 'across ${list.length} account${list.length != 1 ? 's' : ''}',
-                style: const TextStyle(
-                    color: AppColors.textMuted, fontSize: 12),
+                style:
+                    const TextStyle(color: AppColors.textMuted, fontSize: 12),
               ),
             ],
           ),
@@ -467,7 +466,9 @@ class _AccountCard extends StatelessWidget {
         child: Stack(
           children: [
             Positioned(
-              left: 0, top: 0, bottom: 0,
+              left: 0,
+              top: 0,
+              bottom: 0,
               child: Container(width: 4, color: color),
             ),
             Padding(
@@ -524,7 +525,6 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-
 // ── Recent transactions ───────────────────────────────────────────────────────
 
 class _RecentHeader extends ConsumerWidget {
@@ -571,8 +571,7 @@ class _RecentTransactions extends StatelessWidget {
           childCount: 4,
         ),
       ),
-      error: (_, __) =>
-          const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
       data: (list) {
         if (list.isEmpty) {
           return const SliverToBoxAdapter(
@@ -580,8 +579,7 @@ class _RecentTransactions extends StatelessWidget {
               padding: EdgeInsets.symmetric(vertical: 32),
               child: Center(
                 child: Text('No transactions yet',
-                    style: TextStyle(
-                        color: AppColors.textMuted, fontSize: 14)),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
               ),
             ),
           );
@@ -607,64 +605,71 @@ class _TxTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final catColor = parseHexColor(tx.categoryColor);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TransactionDetailScreen(tx: tx),
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: catColor.withOpacity(0.12),
-              shape: BoxShape.circle,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: catColor.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(tx.categoryIcon ?? tx.defaultEmoji,
+                    style: const TextStyle(fontSize: 17)),
+              ),
             ),
-            child: Center(
-              child: Text(tx.categoryIcon ?? tx.defaultEmoji,
-                  style: const TextStyle(fontSize: 17)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tx.merchantName ?? tx.note ?? tx.type,
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${fmtDate(tx.date)}  ·  ${fmtTime(tx.date)}',
-                  style: const TextStyle(
-                      color: AppColors.textMuted, fontSize: 11),
-                ),
-                if (tx.accountName != null)
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    tx.accountName!,
+                    tx.merchantName ?? tx.note ?? tx.type,
+                    style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${fmtDate(tx.date)}  ·  ${fmtTime(tx.date)}',
                     style: const TextStyle(
                         color: AppColors.textMuted, fontSize: 11),
                   ),
-              ],
+                  if (tx.accountName != null)
+                    Text(
+                      tx.accountName!,
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 11),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Text(
-            '${tx.amountPrefix}${fmtCurrency(tx.amount)}',
-            style: TextStyle(
-                color: tx.amountColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w700),
-          ),
-        ],
+            Text(
+              '${tx.amountPrefix}${fmtCurrency(tx.amount)}',
+              style: TextStyle(
+                  color: tx.amountColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
       ),
     );
   }

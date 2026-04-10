@@ -181,13 +181,14 @@ class _TransactionDetailScreenState
           _removedItemIds.map((id) => api.deleteTransactionItem(id)));
 
       // Update existing items
-      await Future.wait(_items
-          .where((i) => i.id.isNotEmpty)
-          .map((i) => api.updateTransactionItem(i.id, {
-                'amount': i.amount,
-                'quantity': i.quantity,
-                'remarks': i.remarks.isEmpty ? null : i.remarks,
-              })));
+      await Future.wait(_items.where((i) => i.id.isNotEmpty).map((i) {
+        final payload = <String, dynamic>{
+          'amount': i.amount,
+          'quantity': i.quantity,
+        };
+        if (i.remarks.isNotEmpty) payload['remarks'] = i.remarks;
+        return api.updateTransactionItem(i.id, payload);
+      }));
 
       // Add new items
       await Future.wait(_items
@@ -538,6 +539,7 @@ class _TransactionDetailScreenState
     return FormCard(
       title: 'DETAILS',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _DetailRow(
             label: 'DATE & TIME',
@@ -679,7 +681,7 @@ class _TransactionDetailScreenState
 
   Widget _buildFooter(double bottom) {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 12),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 24),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
         color: Color(0xCC0D0F17),
@@ -740,10 +742,10 @@ class _TransactionDetailScreenState
                   children: [
                     Expanded(
                       child: _FooterBtn(
-                        label: 'Edit',
+                        label: 'Edit Transaction',
                         onTap: () => setState(() => _editing = true),
                         primary: true,
-                        outline: true,
+                        outline: false,
                       ),
                     ),
                     const SizedBox(width: 12),
