@@ -126,7 +126,7 @@ class SettingsNotifier extends AsyncNotifier<NotificationSettings> {
         streakCount: s.streakCount,
       );
 
-  Future<void> updateSettings(NotificationSettings s) async {
+  Future<void> save(NotificationSettings s) async {
     state = AsyncData(s);
     await _save(s);
     await _reschedule(s);

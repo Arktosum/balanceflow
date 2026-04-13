@@ -259,43 +259,43 @@ class SettingsScreen extends ConsumerWidget {
   // ── Test button ────────────────────────────────────────────────────────────
 
   Widget _buildTestButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () async {
-        await NotificationService.instance.fireTest();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Test notification sent!'),
-              backgroundColor: AppColors.income,
-            ),
-          );
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceHigh,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
+    return _Section(
+      title: 'DEBUG',
+      children: [
+        _ActionTile(
+          icon: Icons.notifications_active_rounded,
+          iconColor: AppColors.primary,
+          title: 'Send test notification',
+          subtitle: 'Verify notifications are working',
+          onTap: () async {
+            await NotificationService.instance.fireTest();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content:
+                      Text('Test notification sent! Check your status bar.'),
+                  backgroundColor: AppColors.income,
+                ),
+              );
+            }
+          },
         ),
-        child: const Center(
-          child: Text(
-            'Send test notification',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+        _Divider(),
+        _ActionTile(
+          icon: Icons.schedule_rounded,
+          iconColor: AppColors.textMuted,
+          title: 'Next daily reminder',
+          subtitle: NotificationService.instance.debugNextTime(21, 0),
+          onTap: () {},
         ),
-      ),
+      ],
     );
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   void _update(WidgetRef ref, NotificationSettings s) =>
-      ref.read(settingsProvider.notifier).updateSettings(s);
+      ref.read(settingsProvider.notifier).save(s);
 
   void _confirmSignOut(BuildContext context, WidgetRef ref) {
     showDialog(

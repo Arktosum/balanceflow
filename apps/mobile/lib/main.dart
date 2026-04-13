@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
 import 'core/services/notification_service.dart';
 import 'app.dart';
 
@@ -14,9 +13,11 @@ void main() async {
     statusBarIconBrightness: Brightness.light,
   ));
 
-  tz.initializeTimeZones();
+  // Init notifications — sets up channel + detects local timezone
   await NotificationService.instance.init();
-  await NotificationService.instance.requestPermission();
+
+  // Request permissions (POST_NOTIFICATIONS + SCHEDULE_EXACT_ALARM)
+  await NotificationService.instance.requestPermissions();
 
   runApp(const ProviderScope(child: App()));
 }
