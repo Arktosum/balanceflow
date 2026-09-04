@@ -1,41 +1,38 @@
-import { Client } from 'pg'
+import { Pool } from 'pg'
 import dotenv from 'dotenv'
 
 dotenv.config()
 
 const connectionString = process.env.DATABASE_URL!
 
+const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+})
+
 // Creates a fresh connection, runs a callback, then destroys it
-export async function withDb<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-  const client = new Client({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 10000,
-    query_timeout: 10000,
-  })
-  await client.connect()
+export async function withDb<T>(fn: (client: any) => Promise<T>): Promise<T> {
+  const client = await pool.connect()
   try {
     return await fn(client)
   } finally {
-    await client.end().catch(() => { })
+    client.release()
   }
 }
 
-// Keeps backward compat — acts like a pool but creates fresh connections
+// Keeps backward compat — acts like a pool
 export const db = {
   query: async (text: string, params?: any[]) => {
-    return withDb((client) => client.query(text, params))
+    return pool.query(text, params)
   },
   connect: async () => {
-    const client = new Client({
-      connectionString,
-      ssl: { rejectUnauthorized: false },
-      connectionTimeoutMillis: 10000,
-    })
-    await client.connect()
+    const client = await pool.connect()
     return {
       query: (text: string, params?: any[]) => client.query(text, params),
-      release: async (destroy?: boolean) => { await client.end().catch(() => { }) },
+      release: async (destroy?: boolean) => { client.release(destroy) },
     }
   },
 }

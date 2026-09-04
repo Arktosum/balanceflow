@@ -30,7 +30,8 @@ dependencies:
   shared_preferences: ^2.3.3
 
 
-dependencies_overrides: {}
+dependency_overrides:
+  vector_math: ^2.4.0
 
 dev_dependencies:
   flutter_test:

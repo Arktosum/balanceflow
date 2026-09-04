@@ -23,30 +23,21 @@ class OverviewTab extends StatelessWidget {
   List<_TrendPoint> _buildTrend() {
     if (transactions.isEmpty) return [];
 
-    // Determine bucket key function based on period
-    String Function(DateTime) key;
+    // Determine bucket key and sortable key function based on period
+    String Function(DateTime) sortKey;
+    String Function(String) displayLabel;
+    
     if (period == 'week') {
-      key = (d) =>
-          '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+      sortKey = (d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      displayLabel = (k) => '${k.substring(8, 10)}/${k.substring(5, 7)}';
     } else if (period == 'month') {
-      key = (d) => '${d.day}';
+      sortKey = (d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      displayLabel = (k) => int.parse(k.substring(8, 10)).toString();
     } else {
       // year / all / custom — bucket by month
-      const months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec'
-      ];
-      key = (d) => months[d.month - 1];
+      sortKey = (d) => '${d.year}-${d.month.toString().padLeft(2, '0')}';
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      displayLabel = (k) => months[int.parse(k.substring(5, 7)) - 1];
     }
 
     final income = <String, double>{};
@@ -54,7 +45,7 @@ class OverviewTab extends StatelessWidget {
 
     for (final tx in transactions) {
       if (tx.status != 'completed') continue;
-      final k = key(tx.date);
+      final k = sortKey(tx.date);
       if (tx.type == 'income') {
         income[k] = (income[k] ?? 0) + tx.amount;
       } else if (tx.type == 'expense') {
@@ -65,7 +56,7 @@ class OverviewTab extends StatelessWidget {
     final keys = {...income.keys, ...expense.keys}.toList()..sort();
     return keys
         .map((k) => _TrendPoint(
-              label: k,
+              label: displayLabel(k),
               income: income[k] ?? 0,
               expense: expense[k] ?? 0,
             ))
